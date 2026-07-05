@@ -147,7 +147,7 @@ def _load_config_tree(path: Path, stack: tuple[Path, ...] = ()) -> dict[str, Any
 
 _DATA_PATH_ARGS = (
     ("cosec_root", "COSEC_ROOT", "--cosec-root", "Root directory for the CoSEC dataset."),
-    ("brenet_root", "BRENET_ROOT", "--brenet-root", "Root directory for BRENet and CoSEC event assets."),
+    ("brenet_root", "BRENET_ROOT", "--brenet-root", "Optional fallback root for legacy manifests with relative event paths."),
     ("dsec_root", "DSEC_ROOT", "--dsec-root", "Root directory for the DSEC dataset."),
     ("acdc_root", "ACDC_ROOT", "--acdc-root", "Root directory for the ACDC dataset."),
     ("cosec_manifest", "EVENTSHIFT_COSEC_MANIFEST", "--cosec-manifest", "Path to the CoSEC event manifest JSON."),

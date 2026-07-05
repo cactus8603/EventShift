@@ -19,8 +19,7 @@ The script builds the sequence-level k-fold files and the default frame-list dom
 ```bash
 export COSEC_ROOT=/path/to/cosec/train
 export TEST_ROOT=/path/to/cosec/test
-export BRENET_ROOT=/path/to/BRENet
-export EVENTSHIFT_COSEC_MANIFEST=/path/to/BRENet/projects/brenet_cosec/manifests/cosec_train_bidir_50ms.json
+export EVENTSHIFT_COSEC_MANIFEST=/path/to/cosec_train_bidir_50ms.json
 export DSEC_ROOT=/path/to/dsec
 export ACDC_ROOT=/path/to/acdc
 export EVENTSHIFT_COSEC_SPLIT_DIR=/path/to/cosec/splits
@@ -35,16 +34,17 @@ bash scripts/rebuild_04111.sh \
   --test-root /path/to/cosec/test
 ```
 
-For training, pass the dataset roots explicitly when possible:
+For training, pass the CoSEC root and event manifest explicitly:
 
 ```bash
 bash scripts/train.sh \
   --model mask2former \
   --variant eventshift \
   --cosec-root /path/to/cosec/train \
-  --brenet-root /path/to/BRENet \
   --cosec-manifest /path/to/cosec_train_bidir_50ms.json
 ```
+
+`--brenet-root` is optional and only needed for older manifests whose relative paths cannot be resolved from the manifest location.
 
 ## Dataset Roles
 
@@ -112,7 +112,7 @@ python tools/data/build_cosec_kfold_splits.py \
   --root /path/to/cosec/train \
   --folds 3 \
   --write-splits \
-  --split-dir /path/to/BRENet/projects/brenet_cosec/splits
+  --split-dir /path/to/cosec/splits
 ```
 
 Useful registered dataset names:
@@ -183,7 +183,7 @@ python tools/data/build_cosec_domain_cover_frame_split.py \
   --prefix domaincover20 \
   --val-fraction 0.20 \
   --write-splits \
-  --split-dir /path/to/BRENet/projects/brenet_cosec/splits
+  --split-dir /path/to/cosec/splits
 ```
 
 Frame-level stratified CV:
@@ -194,7 +194,7 @@ python tools/data/build_cosec_stratified_frame_splits.py \
   --folds 5 \
   --prefix stratframe5 \
   --write-splits \
-  --split-dir /path/to/BRENet/projects/brenet_cosec/splits
+  --split-dir /path/to/cosec/splits
 ```
 
 Frame-list prefix splits can put different frames from the same sequence into train and validation. That is useful for controlled coverage studies, but use sequence-level k-fold when measuring sequence generalization.

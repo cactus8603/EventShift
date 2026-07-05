@@ -1,2 +1,2 @@
 data:
-  test_root: ${TEST_ROOT:-data/test}
+  test_root: ${TEST_ROOT:-}

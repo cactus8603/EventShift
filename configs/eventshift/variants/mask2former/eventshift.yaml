@@ -3,8 +3,7 @@ project:
 
 data:
   cosec_root: ${COSEC_ROOT:-/path/to/cosec}
-  brenet_root: ${BRENET_ROOT:-/path/to/BRENet}
-  manifest: ${EVENTSHIFT_COSEC_MANIFEST:-/path/to/BRENet/projects/brenet_cosec/manifests/cosec_train_bidir_50ms.json}
+  manifest: ${EVENTSHIFT_COSEC_MANIFEST:-/path/to/cosec_train_bidir_50ms.json}
   train_dataset: cosec_train_event
   val_datasets:
     - cosec_day_val_event

@@ -19,6 +19,18 @@ def default_brenet_root() -> Path:
     return Path(os.environ.get("BRENET_ROOT", eventshift_root() / "data" / "BRENet")).resolve()
 
 
+def infer_manifest_root(manifest_path: str | Path) -> Path:
+    manifest = Path(manifest_path).expanduser().resolve()
+    parent = manifest.parent
+    if (
+        parent.name == "manifests"
+        and parent.parent.name == "brenet_cosec"
+        and parent.parent.parent.name == "projects"
+    ):
+        return parent.parent.parent.parent
+    return parent
+
+
 def default_manifest_path() -> Path:
     return Path(
         os.environ.get(
@@ -43,11 +55,15 @@ class CoSECEventSample:
         return f"{self.sequence}_{self.frame_id:06d}"
 
 
-def _resolve_brenet(path: str | Path, brenet_root: Path) -> Path:
+def _resolve_manifest_path(path: str | Path, roots: list[Path]) -> Path:
     path = Path(path)
     if path.is_absolute():
         return path
-    return brenet_root / path
+    candidates = [root / path for root in roots]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
 
 
 def _legacy_split_contains_sample(sequence: str, frame_id: int, split: str) -> bool:
@@ -73,15 +89,26 @@ def load_manifest_samples(
     require_exists: bool = True,
 ) -> list[CoSECEventSample]:
     manifest = Path(manifest_path or default_manifest_path()).resolve()
-    root = Path(brenet_root or default_brenet_root()).resolve()
+    roots = []
+    if brenet_root is not None:
+        roots.append(Path(brenet_root).expanduser().resolve())
+    roots.extend([infer_manifest_root(manifest), manifest.parent, default_brenet_root()])
+    deduped_roots = []
+    seen_roots = set()
+    for root in roots:
+        key = str(root)
+        if key in seen_roots:
+            continue
+        seen_roots.add(key)
+        deduped_roots.append(root)
     payload = _load_payload(str(manifest))
     samples: list[CoSECEventSample] = []
     for row in payload.get("samples", []):
         if not row.get("valid", True):
             continue
-        image = _resolve_brenet(row["image"], root)
-        label = _resolve_brenet(row["label"], root)
-        event_h5 = _resolve_brenet(row["event_h5"], root)
+        image = _resolve_manifest_path(row["image"], deduped_roots)
+        label = _resolve_manifest_path(row["label"], deduped_roots)
+        event_h5 = _resolve_manifest_path(row["event_h5"], deduped_roots)
         if require_exists and not (image.exists() and label.exists() and event_h5.exists()):
             continue
         samples.append(

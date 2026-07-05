@@ -8,11 +8,10 @@ runtime:
 
 data:
   cosec_root: ${COSEC_ROOT:-/path/to/cosec}
-  brenet_root: ${BRENET_ROOT:-/path/to/BRENet}
   dsec_root: ${DSEC_ROOT:-/path/to/dsec}
   acdc_root: ${ACDC_ROOT:-/path/to/acdc}
-  test_root: ${TEST_ROOT:-data/test}
-  manifest: ${EVENTSHIFT_COSEC_MANIFEST:-/path/to/BRENet/projects/brenet_cosec/manifests/cosec_train_bidir_50ms.json}
+  test_root: ${TEST_ROOT:-}
+  manifest: ${EVENTSHIFT_COSEC_MANIFEST:-/path/to/cosec_train_bidir_50ms.json}
   train_dataset: null
   val_datasets: []
 

@@ -16,11 +16,17 @@ except ImportError:
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
-BRENET_ROOT = Path(os.environ.get("BRENET_ROOT", WORKSPACE_ROOT / "BRENet")).expanduser()
+_DEFAULT_BRENET_ROOT = WORKSPACE_ROOT / "BRENet"
+_EXPLICIT_BRENET_ROOT = os.environ.get("BRENET_ROOT")
+BRENET_ROOT = Path(_EXPLICIT_BRENET_ROOT).expanduser() if _EXPLICIT_BRENET_ROOT else None
 MANIFEST_PATH = Path(
     os.environ.get(
         "EVENTSHIFT_COSEC_MANIFEST",
-        BRENET_ROOT / "projects" / "brenet_cosec" / "manifests" / "cosec_train_bidir_50ms.json",
+        (BRENET_ROOT or _DEFAULT_BRENET_ROOT)
+        / "projects"
+        / "brenet_cosec"
+        / "manifests"
+        / "cosec_train_bidir_50ms.json",
     )
 ).expanduser()
 
@@ -32,11 +38,44 @@ def _manifest_samples():
     return tuple(sample for sample in payload["samples"] if sample.get("valid", True))
 
 
+def _infer_manifest_root(manifest_path):
+    manifest_path = Path(manifest_path).expanduser().resolve()
+    parent = manifest_path.parent
+    if (
+        parent.name == "manifests"
+        and parent.parent.name == "brenet_cosec"
+        and parent.parent.parent.name == "projects"
+    ):
+        return parent.parent.parent.parent
+    return parent
+
+
+def _candidate_roots():
+    roots = []
+    if BRENET_ROOT is not None:
+        roots.append(BRENET_ROOT)
+    roots.extend([_infer_manifest_root(MANIFEST_PATH), MANIFEST_PATH.parent, _DEFAULT_BRENET_ROOT])
+    deduped = []
+    seen = set()
+    for root in roots:
+        root = Path(root).expanduser()
+        key = str(root)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(root)
+    return deduped
+
+
 def _resolve_brenet(path):
     path = Path(path)
     if path.is_absolute():
         return path
-    return BRENET_ROOT / path
+    candidates = [root / path for root in _candidate_roots()]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
 
 
 def load_cosec_event_dicts(split):
