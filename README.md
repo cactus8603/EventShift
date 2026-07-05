@@ -31,11 +31,14 @@ RGB frames can degrade under low light, glare, and exposure changes. Event signa
 
 ## Results
 
-| Entry | Score | Reproducibility entry point | Notes |
-| --- | ---: | --- | --- |
-| Final b75 pipeline | 0.4111 | `bash scripts/rebuild_04111.sh` | Two Mask2Former exports, one SegFormer export, and bundled post-processing gates. |
+EventShift was submitted to the **CoSEC Semantic Segmentation Track** of the **ECCV 2026 EBMV Workshop Challenge**.
 
-The final challenge ranking and technical report details will be added after the ECCV 2026 EBMV Workshop Challenge report is finalized.
+| Evaluation | Rank | Score / mIoU | Status |
+| --- | ---: | ---: | --- |
+| Public leaderboard | 2nd | 0.4111 | Valid submission |
+| Official final report | TBD | TBD | To be updated |
+
+The official final results will be updated after the ECCV 2026 EBMV Workshop Challenge report is finalized.
 
 ## Installation
 
