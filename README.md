@@ -80,7 +80,7 @@ See [docs/ebmv_seg_environment.md](docs/ebmv_seg_environment.md) for exact setup
 
 ## Dataset Preparation
 
-Raw datasets should live outside the repository. Use the provided entry point to create local workspace folders and build the recommended CoSEC split files:
+Raw datasets should live outside the repository. EventShift uses [CoSEC train/test](https://arxiv.org/abs/2408.08500), CoSEC event assets in a [BRENet-style layout](https://github.com/zyaocoder/BRENet), [DSEC](https://dsec.ifi.uzh.ch/) / [DSEC-Semantic](https://dsec.ifi.uzh.ch/dsec-semantic/), [ACDC](https://acdc.vision.ee.ethz.ch/), and REAL-style challenge/test imagery from the [CoSEC](https://arxiv.org/abs/2408.08500) package. Use the provided entry point to create local workspace folders and build the recommended CoSEC split files:
 
 ```bash
 bash scripts/prepare_data.sh \
@@ -228,4 +228,4 @@ EventShift-specific code is released under the MIT License; see [LICENSE](LICENS
 
 ## Acknowledgement
 
-This repository builds on [Mask2Former](https://github.com/facebookresearch/Mask2Former), [Detectron2](https://github.com/facebookresearch/detectron2), [MMSegmentation](https://github.com/open-mmlab/mmsegmentation), SegFormer, DSEC/DSEC-Semantic, ACDC, and the CoSEC challenge resources. We thank the authors and maintainers for making their code and datasets available to the research community.
+This repository builds on [Mask2Former](https://github.com/facebookresearch/Mask2Former), [Detectron2](https://github.com/facebookresearch/detectron2), [MMSegmentation](https://github.com/open-mmlab/mmsegmentation), SegFormer, [DSEC/DSEC-Semantic](https://dsec.ifi.uzh.ch/dsec-semantic/), [ACDC](https://acdc.vision.ee.ethz.ch/), [BRENet](https://github.com/zyaocoder/BRENet), and the [CoSEC](https://arxiv.org/abs/2408.08500) challenge resources. We thank the authors and maintainers for making their code and datasets available to the research community.

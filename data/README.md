@@ -29,11 +29,11 @@ For the 0.4111 submission rebuild or test-set inference, no split generation is 
 
 | Dataset | How it is collected | How EventShift uses it |
 | --- | --- | --- |
-| CoSEC train/test | Official challenge data with RGB driving frames and semantic labels for the training split. Sequences are organized by illumination domain such as `Day_*` and `Night_*`; the test split is unlabeled for submission. | Main target domain for training, validation, inference, and submission export. |
-| CoSEC events / BRENet assets | Event streams aligned to CoSEC frames and stored through the local BRENet-style event asset layout and manifest files. | Event-based CoSEC training and RGB-event fusion variants. Not required for RGB-only inference or the 0.4111 rebuild. |
-| DSEC / DSEC-Semantic | Public driving data with synchronized RGB/event sensors and 19-class semantic labels. | Auxiliary RGB/event segmentation data for wider driving-domain coverage. |
-| ACDC | Public adverse-condition driving data with fog, night, rain, and snow semantic labels. | Auxiliary adverse-condition data, especially night. We filter small CoSEC-like subsets when the full ACDC domain is too broad. |
-| REAL-style pool | Unlabeled challenge/test-style real-domain imagery. Historical `REAL_dataset/*/gt` folders contain RGB images, not semantic labels. | Diagnostics, inference, and pseudo-label experiments only. It is not supervised ground truth. |
+| [CoSEC train/test](https://arxiv.org/abs/2408.08500) | Official challenge data with RGB driving frames and semantic labels for the training split. Sequences are organized by illumination domain such as `Day_*` and `Night_*`; the test split is unlabeled for submission. | Main target domain for training, validation, inference, and submission export. |
+| [CoSEC events](https://arxiv.org/abs/2408.08500) / [BRENet-style assets](https://github.com/zyaocoder/BRENet) | Event streams aligned to CoSEC frames and stored through local BRENet-style event asset layouts and manifest files. | Event-based CoSEC training and RGB-event fusion variants. Not required for RGB-only inference or final-submission reproduction. |
+| [DSEC](https://dsec.ifi.uzh.ch/) / [DSEC-Semantic](https://dsec.ifi.uzh.ch/dsec-semantic/) | Public driving data with synchronized RGB/event sensors and 19-class semantic labels. | Auxiliary RGB/event segmentation data for wider driving-domain coverage. |
+| [ACDC](https://acdc.vision.ee.ethz.ch/) | Public adverse-condition driving data with fog, night, rain, and snow semantic labels. | Auxiliary adverse-condition data, especially night. We filter small CoSEC-like subsets when the full ACDC domain is too broad. |
+| [REAL-style challenge/test pool](https://arxiv.org/abs/2408.08500) | Unlabeled challenge/test-style real-domain imagery from the CoSEC challenge package. Historical `REAL_dataset/*/gt` folders contain RGB images, not semantic labels. | Diagnostics, inference, and pseudo-label experiments only. It is not supervised ground truth. |
 
 ## What The Quick Script Builds
 

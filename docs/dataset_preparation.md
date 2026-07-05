@@ -50,12 +50,12 @@ bash scripts/train.sh \
 
 | Dataset | Role in EventShift | Required for |
 | --- | --- | --- |
-| CoSEC train | Main supervised RGB semantic segmentation data with `Day_*` and `Night_*` domains. | Training, validation, split generation, domain-gap references. |
-| CoSEC test | Challenge inference data. Includes day, night, and REAL-style sequences without labels. | Inference and submission rebuild. |
-| CoSEC events / BRENet assets | Event streams and manifests aligned to CoSEC frames. | Event-based CoSEC training. Not needed for RGB-only inference or 0.4111 rebuild. |
-| DSEC19 | Auxiliary 19-class driving data, with optional event windows around image timestamps. | Auxiliary RGB/event training and domain coverage experiments. |
-| ACDC | Adverse-condition driving data, especially night. | Auxiliary night/adverse training and CoSEC-night domain patch filtering. |
-| REAL pool | Unlabeled real-domain images. The `gt` directory in the historical REAL pool is RGB imagery, not semantic ground truth. | Inference, diagnostics, and pseudo-label experiments only. |
+| [CoSEC train](https://arxiv.org/abs/2408.08500) | Main supervised RGB semantic segmentation data with `Day_*` and `Night_*` domains. | Training, validation, split generation, domain-gap references. |
+| [CoSEC test](https://arxiv.org/abs/2408.08500) | Challenge inference data. Includes day, night, and REAL-style sequences without labels. | Inference and final-submission reproduction. |
+| [CoSEC events](https://arxiv.org/abs/2408.08500) / [BRENet-style assets](https://github.com/zyaocoder/BRENet) | Event streams and manifests aligned to CoSEC frames. | Event-based CoSEC training. Not needed for RGB-only inference or final-submission reproduction. |
+| [DSEC19 / DSEC-Semantic](https://dsec.ifi.uzh.ch/dsec-semantic/) | Auxiliary 19-class driving data, with optional event windows around image timestamps. | Auxiliary RGB/event training and domain coverage experiments. |
+| [ACDC](https://acdc.vision.ee.ethz.ch/) | Adverse-condition driving data, especially night. | Auxiliary night/adverse training and CoSEC-night domain patch filtering. |
+| [REAL-style challenge/test pool](https://arxiv.org/abs/2408.08500) | Unlabeled real-domain images from the CoSEC challenge package. The `gt` directory in the historical REAL pool is RGB imagery, not semantic ground truth. | Inference, diagnostics, and pseudo-label experiments only. |
 
 ## Expected Layouts
 
