@@ -1,0 +1,33 @@
+project:
+  name: EventShift-04111-Mask2Former-DayEvent
+
+model:
+  name: mask2former_day_event
+  backend_config: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/configs/mask2former/Mask2Former_SwinL_FullCoSEC_FromDayBest_Floor816070_LR5e-7.yaml
+
+checkpoints:
+  init_weights: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/checkpoints/m2f_event_full_cosec_from_day_best_floor816070_lr5e-7.pth
+
+inference:
+  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/mask2former_day_event
+  progress_desc: mask2former_day_event
+  sequences:
+    - Day_Campus_012
+    - Day_Park_011
+    - Day_Suburbs_015
+    - Day_Suburbs_017
+    - Day_Village_009
+  extra_args:
+    - --
+    - TEST.AUG.ENABLED
+    - "True"
+    - TEST.AUG.MIN_SIZES
+    - "${M2F_TTA_MIN_SIZES:-[512,624,768,1024]}"
+    - TEST.AUG.MAX_SIZE
+    - "${M2F_TTA_MAX_SIZE:-1600}"
+    - TEST.AUG.FLIP
+    - "${M2F_TTA_FLIP:-True}"
+    - INPUT.MIN_SIZE_TEST
+    - "624"
+    - INPUT.MAX_SIZE_TEST
+    - "1200"

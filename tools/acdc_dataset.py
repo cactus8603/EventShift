@@ -284,7 +284,7 @@ def load_acdc_night_top50_dicts(manifest_path=None, limit=None):
     if not manifest_path.exists():
         raise FileNotFoundError(
             f"Filtered ACDC manifest not found: {manifest_path}. "
-            "Run tools/filter_acdc_domain_patch.py first."
+            "Run tools/postprocess/filter_acdc_domain_patch.py first."
         )
     with manifest_path.open("r", encoding="utf-8") as f:
         manifest = json.load(f)

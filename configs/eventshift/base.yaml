@@ -1,0 +1,38 @@
+project:
+  name: EventShift
+  root: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}
+
+runtime:
+  device: ${DEVICE:-cuda:0}
+  deterministic: true
+
+data:
+  cosec_root: ${COSEC_ROOT:-/path/to/cosec}
+  brenet_root: ${BRENET_ROOT:-/path/to/BRENet}
+  dsec_root: ${DSEC_ROOT:-/path/to/dsec}
+  acdc_root: ${ACDC_ROOT:-/path/to/acdc}
+  test_root: ${TEST_ROOT:-data/test}
+  manifest: ${EVENTSHIFT_COSEC_MANIFEST:-/path/to/BRENet/projects/brenet_cosec/manifests/cosec_train_bidir_50ms.json}
+  train_dataset: null
+  val_datasets: []
+
+model:
+  name: null
+  backend: native
+  exporter: null
+  backend_config: null
+  num_classes: 19
+
+checkpoints:
+  init_weights: null
+
+train:
+  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/eventshift
+  num_gpus: 1
+  batch_size: 3
+  lr: 0.000005
+
+inference:
+  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/infer
+  progress_desc: EventShift
+  extra_args: []

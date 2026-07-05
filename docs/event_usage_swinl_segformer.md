@@ -401,13 +401,13 @@ bundled SegFormer inference path. So the safest interpretation is:
 Document:
 
 ```text
-REBUILD_04111_FROM_CHECKPOINTS.md
+docs/rebuild_04111_from_checkpoints.md
 ```
 
 Runner:
 
 ```text
-code/rebuild_04111_b75_from_bundle_checkpoints.sh
+scripts/rebuild_04111.sh --recipe configs/eventshift/recipes/rebuild_04111_b75.yaml
 ```
 
 The runner regenerates:

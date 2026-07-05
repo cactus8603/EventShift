@@ -1,0 +1,4 @@
+model:
+  backend: maskdino
+  exporter: maskdino
+  num_classes: 19

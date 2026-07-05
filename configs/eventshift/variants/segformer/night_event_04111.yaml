@@ -1,0 +1,23 @@
+project:
+  name: EventShift-04111-SegFormer-NightEvent
+
+model:
+  name: segformer_night_event
+  backend_config: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/configs/segformer/SegFormer_B5_FullCoSEC_FromNightBest_Floor546453.py
+
+checkpoints:
+  init_weights: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/checkpoints/segformer_b5_event_full_cosec_from_night_best_floor546453_lr1e-6_iter4500.pth
+
+inference:
+  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/segformer_night_event
+  progress_desc: segformer_night_event
+  sequences:
+    - Night_Campus_010
+    - Night_City_009
+    - Night_Park_009
+  extra_args:
+    - --scale-specs
+    - ${MMSEG_TTA_SCALE_SPECS:-s512:512:1200,s624:624:1200,s768:768:1400,s1024:1024:1600}
+    - --scale-set
+    - ${MMSEG_TTA_SCALE_SET:-s512+s624+s768+s1024}
+    - --flip

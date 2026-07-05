@@ -1,0 +1,41 @@
+project:
+  name: EventShift-CoSEC
+
+data:
+  cosec_root: ${COSEC_ROOT:-/path/to/cosec}
+  brenet_root: ${BRENET_ROOT:-/path/to/BRENet}
+  manifest: ${EVENTSHIFT_COSEC_MANIFEST:-/path/to/BRENet/projects/brenet_cosec/manifests/cosec_train_bidir_50ms.json}
+  train_dataset: cosec_train_event
+  val_datasets:
+    - cosec_day_val_event
+    - cosec_night_val_event
+
+model:
+  name: swinl_eventshift
+  backend_config: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/configs/mask2former_experiments/Mask2Former_SwinL_CoSEC_EventReliability_Exp2.yaml
+  rgb_encoder: swin_large
+  event_encoder: event_voxel
+  fusion: reliability_gated
+
+event:
+  enabled: true
+  num_bins: 5
+  support_percentile: 60.0
+  temporal_threshold: 0.10
+  support_dilation: 2
+  edge_window_radii_ms: [25, 50, 100]
+  boundary_radii: [3, 5]
+
+train:
+  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/cosec_eventshift
+  num_gpus: 1
+  batch_size: 3
+  lr: 0.000005
+  epochs: 4
+
+inference:
+  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/cosec_eventshift
+  progress_desc: mask2former_eventshift
+
+checkpoints:
+  init_weights: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/checkpoints/best_model_cosec_day.pth

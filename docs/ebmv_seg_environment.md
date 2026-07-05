@@ -7,6 +7,7 @@ The successful commands used the environment like this:
 
 ```bash
 bash scripts/rebuild_04111.sh \
+  --recipe configs/eventshift/recipes/rebuild_04111_b75.yaml \
   --test-root /code/ebmv/portable_submission_bundle_v3_20260629/test \
   --conda /root/miniconda3/bin/conda \
   --m2f-env ebmv_seg \
@@ -119,6 +120,7 @@ Run:
 ```bash
 cd /code/ebmv/EventShift
 bash scripts/rebuild_04111.sh \
+  --recipe configs/eventshift/recipes/rebuild_04111_b75.yaml \
   --test-root /path/to/test \
   --conda /root/miniconda3/bin/conda \
   --m2f-env ebmv_seg \
@@ -132,19 +134,13 @@ The final generated zip is written under:
 outputs/rebuild_04111_b75_from_checkpoints_<timestamp>/submission_zips/
 ```
 
-The authoritative submitted/reference artifact is:
+The local submitted reference is:
 
 ```text
-artifacts/submission_zips/sub_pipeline_b75_eventseg_plus_realgate60a5000_20260629.zip
+submit/sub_pipeline_b75.zip
 ```
 
-The `submit/sub_pipeline_b75.zip` file in this workspace matches the first
-checkpoint rebuild at decoded PNG content level, while the authoritative
-artifact has SHA256:
-
-```text
-4c369c3d3ce554618366a0db66189f5b92cf7ffe64ebc28ac251374d56bda46b
-```
+The runner prints the generated zip SHA and then compares archive contents. Zip container bytes can differ because metadata is not stable; the reliable check is that the entry list and PNG bytes match the submitted reference.
 
 ## Reproducibility Knobs
 

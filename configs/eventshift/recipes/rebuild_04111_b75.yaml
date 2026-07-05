@@ -1,0 +1,65 @@
+rebuild:
+  name: rebuild_04111_b75
+  output_prefix: rebuild_04111_b75_from_checkpoints
+  expected_final_sha: 4c369c3d3ce554618366a0db66189f5b92cf7ffe64ebc28ac251374d56bda46b
+  expected_final_zip: artifacts/submission_zips/sub_pipeline_b75_eventseg_plus_realgate60a5000_20260629.zip
+
+  runtime:
+    conda: ${CONDA:-/home/u1621738/miniconda3/bin/conda}
+    m2f_env: ${M2F_ENV:-mask2former}
+    mmseg_env: ${MMSEG_ENV:-mmseg}
+    device: ${DEVICE:-cuda:0}
+    deterministic: ${EVENTSHIFT_DETERMINISTIC:-1}
+
+  sequence_groups:
+    day:
+      - Day_Campus_012
+      - Day_Park_011
+      - Day_Suburbs_015
+      - Day_Suburbs_017
+      - Day_Village_009
+    night:
+      - Night_Campus_010
+      - Night_City_009
+      - Night_Park_009
+
+  exports:
+    - name: mask2former_day_event
+      model: mask2former
+      variant: day_event_04111
+      group: day
+      env: m2f
+    - name: mask2former_night_full_desc
+      model: mask2former
+      variant: night_full_desc_04111
+      group: night
+      env: m2f
+    - name: segformer_night_event
+      model: segformer
+      variant: night_event_04111
+      group: night
+      env: mmseg
+
+  artifacts:
+    anchor_04075_zip: artifacts/submission_zips/sub_reqswin_04075base_seg_swin_m2f_min3_realvote_20260628.zip
+    night_valpair_zip: artifacts/submission_zips/sub_04085realvote_eventday_night_valrepairpairs_p50n100c500_b5comp60a5000_keepreal_20260629.zip
+    realgate_zip: artifacts/submission_zips/sub_04085realvote_eventday_valpairnight_p50n100c500_realgate60a5000_20260629.zip
+
+  postprocess:
+    allow_pairs: building->road,wall->road,wall->fence,fence->road,fence->wall,pole->rider,traffic light->vegetation,vegetation->road,vegetation->sidewalk,vegetation->building,vegetation->wall,terrain->sidewalk,sky->building,sky->vegetation
+    eventseg_p70:
+      out_name: full_desc_m2fnight_eventseg_valrepairpairs_p70n100c500_b5comp60a5000_20260629
+      summary_name: full_desc_m2fnight_eventseg_valrepairpairs_p70n100c500_b5comp60a5000_summary_20260629.json
+      component_min_boundary5_rate: 0.60
+      component_max_area: 5000
+    main_keepreal:
+      out_name: sub_04085realvote_eventday_valpairnight_p50n100c500_b5comp60a5000_keepreal_20260629
+    eventseg_keepreal:
+      out_name: sub_eventday_eventsegnight_p70n100c500_b5comp60a5000_keepreal_20260629
+    pipeline_b75:
+      out_name: sub_pipeline_main_plus_eventsegnight_p70_b75a2000_keepreal_20260629
+      summary_name: sub_pipeline_main_plus_eventsegnight_p70_b75a2000_keepreal_summary_20260629.json
+      component_min_boundary5_rate: 0.75
+      component_max_area: 2000
+    final:
+      out_name: sub_pipeline_b75_eventseg_plus_realgate60a5000_20260629

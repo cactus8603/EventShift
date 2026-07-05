@@ -1,0 +1,4 @@
+model:
+  backend: mask2former
+  exporter: mask2former
+  num_classes: 19

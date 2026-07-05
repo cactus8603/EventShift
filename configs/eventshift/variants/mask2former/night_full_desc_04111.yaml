@@ -1,0 +1,31 @@
+project:
+  name: EventShift-04111-Mask2Former-NightFullDesc
+
+model:
+  name: mask2former_night_full_desc
+  backend_config: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/configs/mask2former/Mask2Former_SwinL_FullDSEC_CoSEC_ACDC_UnifiedClassCover.yaml
+
+checkpoints:
+  init_weights: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/checkpoints/m2f_full_desc_selected_cosec_night.pth
+
+inference:
+  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/mask2former_night_full_desc
+  progress_desc: mask2former_night_full_desc
+  sequences:
+    - Night_Campus_010
+    - Night_City_009
+    - Night_Park_009
+  extra_args:
+    - --
+    - TEST.AUG.ENABLED
+    - "True"
+    - TEST.AUG.MIN_SIZES
+    - "${M2F_TTA_MIN_SIZES:-[512,624,768,1024]}"
+    - TEST.AUG.MAX_SIZE
+    - "${M2F_TTA_MAX_SIZE:-1600}"
+    - TEST.AUG.FLIP
+    - "${M2F_TTA_FLIP:-True}"
+    - INPUT.MIN_SIZE_TEST
+    - "624"
+    - INPUT.MAX_SIZE_TEST
+    - "1200"

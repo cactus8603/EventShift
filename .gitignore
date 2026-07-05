@@ -32,6 +32,8 @@ checkpoints/*
 !checkpoints/README.md
 submit/*.zip
 !submit/README.md
+work_dirs/*
+!work_dirs/README.md
 
 # Generated prediction / rebuild artifact types
 outputs/**/*.png

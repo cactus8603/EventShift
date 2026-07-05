@@ -1,0 +1,4 @@
+model:
+  backend: mmseg
+  exporter: mmseg
+  num_classes: 19
