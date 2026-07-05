@@ -1,0 +1,47 @@
+_BASE_: ../../third_party/Mask2Former/configs/cityscapes/semantic-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_90k.yaml
+DATASETS:
+  TRAIN: ("cosec_train_event",)
+  TEST: ("cosec_day_val_event", "cosec_night_val_event")
+MODEL:
+  WEIGHTS: "work_dirs/swinL_seqholdout305_from_latest_night/best_model_cosec_day.pth"
+  EVENT_FUSION:
+    ENABLED: True
+    IN_CHANNELS: 10
+    STAT_CHANNELS: 4
+    STAGES: ["res3", "res4"]
+    HIDDEN_DIM: 128
+    INIT_ALPHA: 0.05
+    GATE_BIAS: -2.0
+SOLVER:
+  IMS_PER_BATCH: 3
+  BASE_LR: 0.000005
+  AMP:
+    ENABLED: True
+TEST:
+  EVAL_PERIOD: 1132
+TRAIN:
+  EPOCHS: 4
+  NUM_TRAIN_SAMPLES: 2264
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+INPUT:
+  MIN_SIZE_TRAIN: [512, 624, 768]
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 1200
+  MIN_SIZE_TEST: 624
+  MAX_SIZE_TEST: 1200
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+  EVENT:
+    NUM_BINS: 5
+    SUPPORT_PERCENTILE: 50.0
+    TEMPORAL_THRESHOLD: 0.05
+    SUPPORT_DILATION: 1
+    DROPOUT_PROB: 0.15
+    BIN_DROPOUT_PROB: 0.10
+DATALOADER:
+  NUM_WORKERS: 4
+OUTPUT_DIR: "work_dirs/exp1_swinL_seqholdout305_cosec_event_res34_epoch_from_day65"

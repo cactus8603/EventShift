@@ -1,0 +1,41 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventRes34_Epoch.yaml
+DATASETS:
+  TRAIN: ("cosec_train_event",)
+  TEST: ("cosec_day_val_event", "cosec_night_val_event")
+MODEL:
+  WEIGHTS: "work_dirs/swinL_seqholdout305_from_latest_night/best_model_cosec_day.pth"
+  EVENT_FUSION:
+    ENABLED: False
+  EVENT_EDGE:
+    ENABLED: True
+    IN_CHANNELS: 9
+    HIDDEN_DIM: 64
+    USE_RGB_FEATURE: True
+    RGB_FEATURE: "res2"
+    DETACH_RGB_FEATURE: True
+    OUTPUT_STRIDE: 4
+    PRIMARY_BOUNDARY_RADIUS: 3
+    BCE_WEIGHT: 1.0
+    DICE_WEIGHT: 1.0
+    POS_WEIGHT_MAX: 20.0
+    LOG_EDGE_STATS: True
+    TRAIN_ONLY_EDGE: True
+SOLVER:
+  IMS_PER_BATCH: 48
+  BASE_LR: 0.0001
+  AMP:
+    ENABLED: True
+TRAIN:
+  EPOCHS: 6
+  NUM_TRAIN_SAMPLES: 2264
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+INPUT:
+  EVENT:
+    EDGE_WINDOW_RADII_MS: [25, 50, 200]
+    BOUNDARY_RADII: [3, 5]
+    DROPOUT_PROB: 0.0
+    BIN_DROPOUT_PROB: 0.0
+DATALOADER:
+  NUM_WORKERS: 0
+OUTPUT_DIR: "work_dirs/exp3a_event_edge_semantic_pretrain_from_day65_bs48_w0"

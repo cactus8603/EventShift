@@ -1,0 +1,17 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp13A_Day65EventUncertainBoundaryAmplified.yaml
+MODEL:
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp13A could train but did not move the same-batch prediction after 30
+    # steps. Exp14A keeps the same event-active + RGB-uncertain/boundary
+    # candidate definition, but tests whether the final residual path has
+    # enough scale to affect logits.
+    INIT_ALPHA: 0.120
+    GATE_BIAS: -1.5
+    LOSS_PRESERVE_KL_WEIGHT: 1.5
+    LOSS_GATE_SPARSE_WEIGHT: 0.0005
+    LOSS_GATE_INVALID_WEIGHT: 0.002
+    REPAIR_GATE_POSITIVE_WEIGHT: 20.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 0.25
+SOLVER:
+  BASE_LR: 0.000010
+OUTPUT_DIR: "work_dirs/fullcosec-exp14a_day65_event_correction_scale_probe_bs8"

@@ -1,0 +1,41 @@
+_BASE_: Mask2Former_SwinL_CoSEC_DayExp1C_StageC_Head.yaml
+MODEL:
+  WEIGHTS: "work_dirs/day-exp1c_stageC_head_from_stageB_strong_bs8/model_final.pth"
+  DAY_EVENT_BOUNDARY_REFINER:
+    UNCERTAIN_FRACTION: 0.40
+    EDGE_PROB_POWER: 0.40
+    CLASS_GATE_WEIGHTS: [
+      1.25,  # road
+      0.35,  # sidewalk
+      1.50,  # building
+      0.50,  # wall
+      0.50,  # fence
+      1.35,  # pole
+      0.75,  # traffic light
+      0.40,  # traffic sign
+      0.30,  # vegetation
+      0.50,  # terrain
+      0.35,  # sky
+      1.30,  # person
+      1.40,  # rider
+      0.45,  # car
+      0.50,  # truck
+      0.50,  # bus
+      0.50,  # train
+      0.25,  # motorcycle
+      0.40,  # bicycle
+    ]
+    CLASS_GATE_LOSS_THRESHOLD: 0.60
+    LOSS_BOUNDARY_CE_WEIGHT: 1.0
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.5
+    LOSS_PRESERVE_KL_WEIGHT: 3.0
+    LOSS_GATE_INVALID_WEIGHT: 0.002
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0002
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.0000015
+DATALOADER:
+  NUM_WORKERS: 6
+TRAIN:
+  EPOCHS: 2
+OUTPUT_DIR: "work_dirs/day-exp1c_stageD_classgate_from_stageC_head_bs8"

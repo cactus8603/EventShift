@@ -1,0 +1,23 @@
+_BASE_: Mask2Former_SwinL_CoSEC_DayNightDesc_Exp1A_LessConservativeEventHead.yaml
+MODEL:
+  TRAINABLE_PREFIXES:
+    - "early_event_edge_adapter."
+    - "sem_seg_head."
+    - "backbone.layers.3."
+    - "backbone.norm3."
+  EARLY_EVENT_EDGE_ADAPTER:
+    INIT_ALPHA: 0.006
+    ALPHA_MAX: 0.080
+    GATE_BIAS: -2.5
+    EDGE_PROB_POWER: 0.75
+    RELIABILITY_FLOOR: 0.25
+    EVENT_EDGE_THRESHOLD: 0.08
+    CONFIDENCE_THRESHOLD: 0.82
+    MARGIN_THRESHOLD: 0.40
+    GATE_BCE_WEIGHT: 0.12
+    GATE_POSITIVE_WEIGHT: 8.0
+SOLVER:
+  IMS_PER_BATCH: 4
+  BASE_LR: 0.0000008
+  BACKBONE_MULTIPLIER: 0.1
+OUTPUT_DIR: "work_dirs/daynightdesc-exp1b_less_conservative_event_backbone_last_from_day65_bs4"

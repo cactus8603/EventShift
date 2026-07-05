@@ -1,0 +1,10 @@
+_BASE_: Mask2Former_SwinL_CoSEC_Exp26C_DayEventPEFTAdapterPredictor.yaml
+MODEL:
+  EARLY_EVENT_EDGE_ADAPTER:
+    GATE_SUPERVISION_TARGET: "learned"
+    GATE_POSITIVE_WEIGHT: 7.0
+    GATE_NEGATIVE_WEIGHT: 1.4
+    GATE_BCE_WEIGHT: 0.07
+SOLVER:
+  BASE_LR: 0.000008
+OUTPUT_DIR: "work_dirs/exp27b_day_event_peft_learnedgate_from_day65_4352_bs4"

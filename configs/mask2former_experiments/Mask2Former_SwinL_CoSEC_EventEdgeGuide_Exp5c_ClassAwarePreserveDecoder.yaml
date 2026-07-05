@@ -1,0 +1,20 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventEdgeGuide_Exp5a_PreserveDecoder.yaml
+MODEL:
+  WEIGHTS: "work_dirs/exp3b_event_edge_class_aware_from_day65_bs40_w0/model_0000227.pth"
+  EVENT_EDGE:
+    CLASS_AWARE: True
+    NUM_CLASSES: 19
+    CLASS_BOUNDARY_RADIUS: 3
+    CLASS_BCE_WEIGHT: 0.05
+    CLASS_POS_WEIGHT_MAX: 20.0
+  EVENT_PRESERVE:
+    WEIGHT: 0.35
+SOLVER:
+  IMS_PER_BATCH: 6
+  BASE_LR: 0.000002
+TRAIN:
+  EPOCHS: 3
+  NUM_TRAIN_SAMPLES: 2264
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+OUTPUT_DIR: "work_dirs/exp5c_classaware_preserve_decoder_from_exp3b227_bs6"

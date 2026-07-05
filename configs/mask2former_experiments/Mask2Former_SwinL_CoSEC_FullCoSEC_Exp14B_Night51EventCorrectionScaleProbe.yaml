@@ -1,0 +1,20 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp13B_Night51EventScoreAmplified.yaml
+MODEL:
+  WEIGHTS: "work_dirs/hybrid_checkpoints/exp11b_night51_alpha012_gatebias15.pth"
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp13B moved the same-batch prediction by only two net pixels after 30
+    # steps. This version keeps the same night event-active + uncertainty
+    # candidate region and score predictor, but lets trusted final corrections
+    # have enough magnitude to change argmax.
+    INIT_ALPHA: 0.120
+    GATE_BIAS: -1.5
+    LOSS_PRESERVE_KL_WEIGHT: 1.5
+    LOSS_GATE_SPARSE_WEIGHT: 0.0005
+    LOSS_GATE_INVALID_WEIGHT: 0.002
+    REPAIR_GATE_POSITIVE_WEIGHT: 20.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 0.25
+    SCORE_POSITIVE_WEIGHT: 8.0
+    SCORE_NEGATIVE_WEIGHT: 0.25
+SOLVER:
+  BASE_LR: 0.000010
+OUTPUT_DIR: "work_dirs/fullcosec-exp14b_night51_event_correction_scale_probe_bs6"

@@ -1,0 +1,16 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp20B_EventBoundaryGateSupervisedRelaxed.yaml
+MODEL:
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp21B: stronger final gate scale, but with slightly smaller alpha and
+    # stronger invalid/sparse penalties. This tests whether the bottleneck is
+    # mostly final_gate saturation rather than candidate learning.
+    INIT_ALPHA: 0.200
+    GATE_BIAS: -2.0
+    FINAL_GATE_SCALE: 16.0
+    LOSS_REPAIR_GATE_BCE_WEIGHT: 0.08
+    REPAIR_GATE_POSITIVE_WEIGHT: 10.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 1.0
+    LOSS_PRESERVE_KL_WEIGHT: 8.0
+    LOSS_GATE_SPARSE_WEIGHT: 0.004
+    LOSS_GATE_INVALID_WEIGHT: 0.025
+OUTPUT_DIR: "work_dirs/fullcosec-exp21b_event_boundary_gate_alpha020_scale16_bs8"

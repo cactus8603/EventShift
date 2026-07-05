@@ -1,0 +1,16 @@
+_BASE_: Mask2Former_SwinL_CoSEC_DayExp1C_FullResAllowedCandidate_BoundaryRefiner.yaml
+MODEL:
+  WEIGHTS: "work_dirs/day-exp1c_fullres_allowed_candidate_a005_g20_bs12/model_final.pth"
+  DAY_EVENT_BOUNDARY_REFINER:
+    EDGE_PROB_POWER: 0.5
+    UNCERTAIN_FRACTION: 0.30
+    LOSS_BOUNDARY_CE_WEIGHT: 1.5
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.75
+    LOSS_CANDIDATE_CE_WEIGHT: 0.0
+    LOSS_GATE_INVALID_WEIGHT: 0.001
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0001
+SOLVER:
+  BASE_LR: 0.00002
+TRAIN:
+  EPOCHS: 3
+OUTPUT_DIR: "work_dirs/day-exp1c_stageB_strong_from_a005_final_bs12"

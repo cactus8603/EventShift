@@ -1,0 +1,32 @@
+_BASE_: ../../third_party/Mask2Former/configs/cityscapes/semantic-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_90k.yaml
+DATASETS:
+  TRAIN: ("cosec_train", "nightcity_trainval_cosec_night_domain_patch")
+  TEST: ("cosec_day_val", "cosec_night_val")
+MODEL:
+  WEIGHTS: "work_dirs/swinL_seqholdout305_from_latest_night/best_model_cosec_night.pth"
+SOLVER:
+  IMS_PER_BATCH: 3
+  BASE_LR: 0.000005
+  AMP:
+    ENABLED: True
+TRAIN:
+  EPOCHS: 3
+  NUM_TRAIN_SAMPLES: 2344  # 2264 CoSEC + 80 NightCity domain-patch images
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+TEST:
+  EVAL_PERIOD: 2344
+INPUT:
+  MIN_SIZE_TRAIN: [512, 624, 768]
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 1200
+  MIN_SIZE_TEST: 624
+  MAX_SIZE_TEST: 1200
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+DATALOADER:
+  NUM_WORKERS: 4
+OUTPUT_DIR: "work_dirs/swinL_cosec_night_domainpatch80_epoch_bs3_from_cosec_night50"

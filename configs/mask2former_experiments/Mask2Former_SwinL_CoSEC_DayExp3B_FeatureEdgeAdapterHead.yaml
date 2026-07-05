@@ -1,0 +1,21 @@
+_BASE_: Mask2Former_SwinL_CoSEC_DayExp3A_FeatureEdgeAdapterFrozenDecoder.yaml
+MODEL:
+  EVENT_EDGE_GUIDE:
+    TRAINABLE_PREFIXES:
+      - "event_edge_guide."
+      - "sem_seg_head.predictor.decoder_norm."
+      - "sem_seg_head.predictor.class_embed."
+      - "sem_seg_head.predictor.mask_embed."
+  EVENT_PRESERVE:
+    WEIGHT: 0.7
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.000002
+TRAIN:
+  EPOCHS: 2
+  NUM_TRAIN_SAMPLES: 1917
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+DATALOADER:
+  NUM_WORKERS: 6
+OUTPUT_DIR: "work_dirs/day-exp3b_feature_edge_adapter_head_from_stageC_bs8"

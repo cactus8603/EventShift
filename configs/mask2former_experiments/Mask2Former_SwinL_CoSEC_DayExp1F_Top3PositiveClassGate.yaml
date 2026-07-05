@@ -1,0 +1,52 @@
+_BASE_: Mask2Former_SwinL_CoSEC_DayExp1C_StageC_Head.yaml
+MODEL:
+  WEIGHTS: "work_dirs/day-exp1c_stageC_head_from_stageB_strong_bs8/model_final.pth"
+  TRAINABLE_PREFIXES:
+    - "day_event_boundary_refiner."
+    - "sem_seg_head.predictor.decoder_norm."
+    - "sem_seg_head.predictor.class_embed."
+    - "sem_seg_head.predictor.mask_embed."
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Tests whether top-2 RGB classes are too restrictive on boundary mistakes.
+    # The wider top-k is paired with stronger preserve/invalid penalties and
+    # positive-class gating to avoid broad semantic drift.
+    TOPK_CLASSES: 3
+    UNCERTAIN_FRACTION: 0.20
+    EDGE_PROB_POWER: 0.75
+    CLASS_GATE_WEIGHTS: [
+      1.25,  # road
+      0.10,  # sidewalk
+      1.45,  # building
+      0.15,  # wall
+      0.10,  # fence
+      1.30,  # pole
+      0.15,  # traffic light
+      0.10,  # traffic sign
+      0.05,  # vegetation
+      0.10,  # terrain
+      0.05,  # sky
+      1.25,  # person
+      1.40,  # rider
+      0.10,  # car
+      0.15,  # truck
+      0.15,  # bus
+      0.15,  # train
+      0.05,  # motorcycle
+      0.10,  # bicycle
+    ]
+    CLASS_GATE_LOSS_THRESHOLD: 0.90
+    SKIP_MASK2FORMER_LOSS: False
+    LOSS_BOUNDARY_CE_WEIGHT: 0.75
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.35
+    LOSS_CANDIDATE_CE_WEIGHT: 0.0
+    LOSS_PRESERVE_KL_WEIGHT: 4.0
+    LOSS_GATE_INVALID_WEIGHT: 0.004
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0004
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.00000075
+DATALOADER:
+  NUM_WORKERS: 6
+TRAIN:
+  EPOCHS: 2
+OUTPUT_DIR: "work_dirs/day-exp1f_top3_positive_classgate_from_stageC_head_bs8"

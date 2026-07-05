@@ -1,0 +1,6 @@
+_BASE_: ./Mask2Former_SwinL_DSEC19_EventAdapter_Finetune.yaml
+MODEL:
+  EARLY_EVENT_EDGE_ADAPTER:
+    USE_EVENT_RELIABILITY: False
+    RELIABILITY_THRESHOLD: 0.0
+OUTPUT_DIR: "work_dirs/workshop_dsec19_swinl_event_adapter_no_reliability_from_cityscapes"

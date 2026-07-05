@@ -1,0 +1,23 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventEdgeGuide_Exp5a_PreserveDecoder.yaml
+MODEL:
+  WEIGHTS: "work_dirs/exp5e_hybrid_checkpoints/stageA_eventguide_night50_rgb.pth"
+  EVENT_EDGE_GUIDE:
+    INIT_ALPHA: 0.04
+    GATE_BIAS: -2.0
+    SCORE_SPARSITY_WEIGHT: 0.005
+    GATE_SPARSITY_WEIGHT: 0.001
+    NON_BOUNDARY_GATE_WEIGHT: 0.001
+  EVENT_PRESERVE:
+    WEIGHT: 0.4
+    CONFIDENCE_THRESHOLD: 0.60
+    MARGIN_THRESHOLD: 0.20
+    EVENT_EDGE_THRESHOLD: 0.25
+SOLVER:
+  IMS_PER_BATCH: 6
+  BASE_LR: 0.0000015
+TRAIN:
+  EPOCHS: 3
+  NUM_TRAIN_SAMPLES: 2264
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+OUTPUT_DIR: "work_dirs/exp5e_night50_hybrid_preserve_decoder_bs6"

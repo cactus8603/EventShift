@@ -1,0 +1,23 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp11B_Night50EventActiveUncertainScore.yaml
+MODEL:
+  # Continue from the first Exp11B night-only candidate. This path exists after
+  # the first validation and should only be used if Exp11B second validation
+  # saturates below the TTA anchor.
+  WEIGHTS: "work_dirs/fullcosec-exp11b_night50_event_uncertain_score_bs6/best_model_cosec_night.pth"
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp11B first val reached night 51.1957, but the final correction scale was
+    # still tiny. This variant trusts the learned candidate slightly more,
+    # without widening the event-active + RGB-uncertain region.
+    INIT_ALPHA: 0.040
+    GATE_BIAS: -2.4
+    LOSS_PRESERVE_KL_WEIGHT: 2.0
+    LOSS_GATE_SPARSE_WEIGHT: 0.0015
+    LOSS_GATE_INVALID_WEIGHT: 0.004
+    REPAIR_GATE_POSITIVE_WEIGHT: 15.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 0.5
+    SCORE_POSITIVE_WEIGHT: 6.0
+    SCORE_NEGATIVE_WEIGHT: 0.5
+SOLVER:
+  IMS_PER_BATCH: 6
+  BASE_LR: 0.000004
+OUTPUT_DIR: "work_dirs/fullcosec-exp13b_night51_event_score_amplified_bs6"

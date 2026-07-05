@@ -1,0 +1,16 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventEdgeGuide_Exp4c_StageA.yaml
+MODEL:
+  WEIGHTS: "work_dirs/exp4c_stageA_edge_score_guide_from_exp3b227_bs12_w4/best_model_cosec_night.pth"
+  EVENT_EDGE_GUIDE:
+    TRAIN_ONLY_GUIDE: False
+    TRAIN_WITH_SEM_SEG_HEAD: True
+    TRAIN_EDGE_HEAD: True
+SOLVER:
+  IMS_PER_BATCH: 6
+  BASE_LR: 0.000005
+TRAIN:
+  EPOCHS: 3
+  NUM_TRAIN_SAMPLES: 2264
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+OUTPUT_DIR: "work_dirs/exp4c_stageB_decoder_edge_score_guide_from_stageA_bs6"

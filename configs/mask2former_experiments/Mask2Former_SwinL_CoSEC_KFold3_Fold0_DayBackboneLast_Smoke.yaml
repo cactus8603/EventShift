@@ -1,0 +1,11 @@
+_BASE_: Mask2Former_SwinL_CoSEC_KFold3_Fold0_DayHeadOnly_Smoke.yaml
+MODEL:
+  TRAINABLE_PREFIXES:
+    - "sem_seg_head."
+    - "backbone.layers.3."
+    - "backbone.norm3."
+SOLVER:
+  IMS_PER_BATCH: 4
+  BASE_LR: 0.00000005
+  BACKBONE_MULTIPLIER: 0.1
+OUTPUT_DIR: "work_dirs/kfold3_fold0_day_backbone_last_smoke_from_day65"

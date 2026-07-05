@@ -1,0 +1,62 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventRes34_Epoch.yaml
+DATASETS:
+  TRAIN: ("cosec_train_event", "dsec19_train_filtered630")
+  TEST: ("cosec_day_val_event", "cosec_night_val_event")
+MODEL:
+  WEIGHTS: "work_dirs/swinL_seqholdout305_from_latest_night/best_model_cosec_day.pth"
+  TRAINABLE_PREFIXES:
+    - "early_event_edge_adapter."
+    - "sem_seg_head.predictor."
+  EVENT_FUSION:
+    ENABLED: False
+  EVENT_EDGE:
+    ENABLED: False
+  EVENT_EDGE_GUIDE:
+    ENABLED: False
+  EVENT_PRESERVE:
+    ENABLED: False
+  DAY_EVENT_BOUNDARY_REFINER:
+    ENABLED: False
+  EARLY_EVENT_EDGE_ADAPTER:
+    ENABLED: True
+    IN_CHANNELS: 9
+    STAT_CHANNELS: 4
+    HIDDEN_DIM: 64
+    INIT_ALPHA: 0.004
+    ALPHA_MAX: 0.050
+    GATE_BIAS: -3.0
+    EDGE_PROB_POWER: 1.0
+    USE_EVENT_RELIABILITY: True
+    RELIABILITY_FLOOR: 0.20
+    RELIABILITY_THRESHOLD: 0.02
+    EVENT_EDGE_THRESHOLD: 0.10
+    CONFIDENCE_THRESHOLD: 0.80
+    MARGIN_THRESHOLD: 0.35
+    ENTROPY_THRESHOLD: 0.45
+    REQUIRE_BOUNDARY: True
+    BOUNDARY_RADIUS: 3
+    GATE_BCE_WEIGHT: 0.10
+    GATE_POSITIVE_WEIGHT: 6.0
+    GATE_NEGATIVE_WEIGHT: 1.0
+    GATE_SUPERVISION_DETACH: True
+    LOG_STATS: True
+SOLVER:
+  IMS_PER_BATCH: 4
+  BASE_LR: 0.000001
+  BACKBONE_MULTIPLIER: 0.1
+  AMP:
+    ENABLED: True
+TRAIN:
+  EPOCHS: 3
+  NUM_TRAIN_SAMPLES: 2894
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+INPUT:
+  EVENT:
+    EDGE_WINDOW_RADII_MS: [25, 50, 200]
+    BOUNDARY_RADII: [3, 5]
+    DROPOUT_PROB: 0.0
+    BIN_DROPOUT_PROB: 0.0
+DATALOADER:
+  NUM_WORKERS: 8
+OUTPUT_DIR: "work_dirs/daynightdesc-exp1a_less_conservative_event_head_from_day65_bs4"

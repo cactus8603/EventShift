@@ -1,0 +1,10 @@
+_BASE_: "maskdino_swinl_cosec_dsec_acdc_safe.yaml"
+DATASETS:
+  TRAIN: ("cosec_kfold3_fold1_train", "dsec19_train_filtered630", "acdc_all_train")
+  TEST: ("cosec_kfold3_fold1_day_val", "cosec_kfold3_fold1_night_val", "acdc_all_val", "acdc_night_val")
+SOLVER:
+  MAX_ITER: 6500
+  CHECKPOINT_PERIOD: 500
+TEST:
+  EVAL_PERIOD: 500
+OUTPUT_DIR: "work_dirs/maskdino_swinl_cosec_dsec_acdc_safe_kfold3_fold1_bs1"

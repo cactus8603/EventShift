@@ -1,0 +1,19 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventEdgeGuide_Exp5a_PreserveDecoder.yaml
+MODEL:
+  EVENT_EDGE_GUIDE:
+    TRAINABLE_PREFIXES:
+      - "event_edge_guide."
+      - "event_edge_head."
+      - "sem_seg_head."
+      - "backbone.layers.3."
+      - "backbone.norm3."
+SOLVER:
+  IMS_PER_BATCH: 4
+  BASE_LR: 0.000002
+  BACKBONE_MULTIPLIER: 0.1
+TRAIN:
+  EPOCHS: 3
+  NUM_TRAIN_SAMPLES: 2264
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+OUTPUT_DIR: "work_dirs/exp5b_preserve_decoder_backbone_last_edge_score_from_stageA_day65_bs4"

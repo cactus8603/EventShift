@@ -1,0 +1,18 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp15B_NightPairBroadHardGate.yaml
+MODEL:
+  WEIGHTS: "work_dirs/hybrid_checkpoints/exp11b_night51_alpha012_gatebias15.pth"
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp15 showed hard allowlist was safe but too conservative. Exp16A keeps
+    # the pair-aware loss weights and hard-suppresses known negative pairs, but
+    # lets all non-suppressed top-k candidates compete inside the event/uncertain
+    # region.
+    PAIR_WEIGHT_DEFAULT: 0.35
+    HARD_PAIR_GATE_ENABLED: False
+    HARD_PAIR_SUPPRESS_ENABLED: True
+SOLVER:
+  IMS_PER_BATCH: 6
+  BASE_LR: 0.000002
+TRAIN:
+  EPOCHS: 1
+OUTPUT_DIR: "work_dirs/fullcosec-exp16a_night_pair_suppress_only_retuned_bs6"
+

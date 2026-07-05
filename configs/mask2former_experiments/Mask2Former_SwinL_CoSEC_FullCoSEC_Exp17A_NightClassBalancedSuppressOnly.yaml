@@ -1,0 +1,15 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp16A_NightPairSuppressOnlyRetuned.yaml
+MODEL:
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Class-balanced repair weighting: do not let pixel-heavy road/vegetation/sky
+    # repairs dominate the event objective. The weights follow the CoSEC night
+    # high-res RGB control IoU profile and keep the backbone frozen.
+    REPAIR_CLASS_WEIGHTS: [
+      0.50, 0.80, 1.30, 1.80, 1.50, 1.30, 1.00, 2.20, 0.60, 1.00,
+      0.80, 1.40, 2.00, 1.00, 1.00, 1.00, 1.00, 1.60, 1.40
+    ]
+    LOSS_CANDIDATE_CE_WEIGHT: 0.10
+    LOSS_REPAIR_GATE_BCE_WEIGHT: 0.10
+    SCORE_BCE_WEIGHT: 0.05
+OUTPUT_DIR: "work_dirs/fullcosec-exp17a_night_classbalanced_suppress_only_bs6"
+

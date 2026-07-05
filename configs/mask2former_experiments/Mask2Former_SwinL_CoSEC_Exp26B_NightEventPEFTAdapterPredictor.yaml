@@ -1,0 +1,79 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventRes34_Epoch.yaml
+DATASETS:
+  TRAIN: ("cosec_night_train_event",)
+  TEST: ("cosec_day_val_event", "cosec_night_val_event")
+MODEL:
+  WEIGHTS: "work_dirs/swinL_seqholdout305_from_latest_night/best_model_cosec_night.pth"
+  TRAINABLE_PREFIXES:
+    - "early_event_edge_adapter."
+    - "sem_seg_head.predictor.decoder_norm."
+    - "sem_seg_head.predictor.class_embed."
+    - "sem_seg_head.predictor.mask_embed."
+  EVENT_FUSION:
+    ENABLED: False
+  EVENT_EDGE:
+    ENABLED: False
+  EVENT_EDGE_GUIDE:
+    ENABLED: False
+  EVENT_PRESERVE:
+    ENABLED: False
+  DAY_EVENT_BOUNDARY_REFINER:
+    ENABLED: False
+  EARLY_EVENT_EDGE_ADAPTER:
+    ENABLED: True
+    IN_CHANNELS: 9
+    STAT_CHANNELS: 4
+    HIDDEN_DIM: 64
+    INIT_ALPHA: 0.0020
+    ALPHA_MAX: 0.035
+    GATE_BIAS: -4.0
+    EDGE_PROB_POWER: 1.2
+    USE_EVENT_RELIABILITY: True
+    RELIABILITY_FLOOR: 0.18
+    RELIABILITY_THRESHOLD: 0.03
+    EVENT_EDGE_THRESHOLD: 0.12
+    CONFIDENCE_THRESHOLD: 0.76
+    MARGIN_THRESHOLD: 0.32
+    ENTROPY_THRESHOLD: 0.48
+    REQUIRE_BOUNDARY: True
+    BOUNDARY_RADIUS: 3
+    GATE_BCE_WEIGHT: 0.10
+    GATE_POSITIVE_WEIGHT: 6.0
+    GATE_NEGATIVE_WEIGHT: 1.4
+    GATE_SUPERVISION_DETACH: True
+    # Night positives from previous pair diagnostics were mostly wall/road,
+    # sidewalk/road, pole/sky, and dynamic-object boundaries. Avoid traffic-sign
+    # and broad vegetation drift early.
+    DENY_PRED_CLASSES: [7, 8]
+    LOG_STATS: True
+SOLVER:
+  IMS_PER_BATCH: 4
+  BASE_LR: 0.0000007
+  AMP:
+    ENABLED: True
+TEST:
+  EVAL_PERIOD: 87
+TRAIN:
+  EPOCHS: 4
+  NUM_TRAIN_SAMPLES: 347
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+INPUT:
+  MIN_SIZE_TRAIN: [512, 624, 768]
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 1200
+  MIN_SIZE_TEST: 624
+  MAX_SIZE_TEST: 1200
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+  EVENT:
+    EDGE_WINDOW_RADII_MS: [25, 50, 200]
+    BOUNDARY_RADII: [3, 5]
+    DROPOUT_PROB: 0.0
+    BIN_DROPOUT_PROB: 0.0
+DATALOADER:
+  NUM_WORKERS: 8
+OUTPUT_DIR: "work_dirs/exp26b_night_event_peft_adapter_predictor_from_night50_bs4"

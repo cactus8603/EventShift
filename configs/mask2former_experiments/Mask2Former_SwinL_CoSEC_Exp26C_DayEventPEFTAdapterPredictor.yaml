@@ -1,0 +1,15 @@
+_BASE_: Mask2Former_SwinL_CoSEC_Exp26A_DayEventPEFTAdapterOnly.yaml
+MODEL:
+  TRAINABLE_PREFIXES:
+    - "early_event_edge_adapter."
+    - "sem_seg_head.predictor.decoder_norm."
+    - "sem_seg_head.predictor.class_embed."
+    - "sem_seg_head.predictor.mask_embed."
+  EARLY_EVENT_EDGE_ADAPTER:
+    INIT_ALPHA: 0.010
+    ALPHA_MAX: 0.080
+    GATE_BIAS: -3.0
+    GATE_BCE_WEIGHT: 0.10
+SOLVER:
+  BASE_LR: 0.000010
+OUTPUT_DIR: "work_dirs/exp26c_day_event_peft_adapter_predictor_from_day65_4352_bs4"

@@ -1,0 +1,46 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventEdgeGuide_Exp4c_StageA.yaml
+MODEL:
+  WEIGHTS: "work_dirs/exp4c_stageA_edge_score_guide_from_exp3b227_bs12_w4/best_model_cosec_day.pth"
+  EVENT_EDGE:
+    ENABLED: True
+    TRAIN_ONLY_EDGE: False
+    CLASS_AWARE: False
+    BCE_WEIGHT: 0.05
+    DICE_WEIGHT: 0.05
+  EVENT_EDGE_GUIDE:
+    ENABLED: True
+    TRAIN_ONLY_GUIDE: False
+    TRAIN_WITH_SEM_SEG_HEAD: False
+    TRAIN_EDGE_HEAD: True
+    TRAINABLE_PREFIXES:
+      - "event_edge_guide."
+      - "event_edge_head."
+      - "sem_seg_head."
+    INIT_ALPHA: 0.05
+    GATE_BIAS: -2.0
+    SCORE_PREDICTOR_ENABLED: True
+    SCORE_SPARSITY_WEIGHT: 0.005
+    GATE_SPARSITY_WEIGHT: 0.001
+    NON_BOUNDARY_GATE_WEIGHT: 0.001
+  EVENT_PRESERVE:
+    ENABLED: True
+    WEIGHT: 0.3
+    CONFIDENCE_THRESHOLD: 0.65
+    MARGIN_THRESHOLD: 0.25
+    EVENT_EDGE_THRESHOLD: 0.25
+    USE_BOUNDARY_TARGET: True
+    USE_EVENT_EDGE: True
+    LOG_STATS: True
+SOLVER:
+  IMS_PER_BATCH: 6
+  BASE_LR: 0.000002
+  AMP:
+    ENABLED: True
+TRAIN:
+  EPOCHS: 3
+  NUM_TRAIN_SAMPLES: 2264
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+DATALOADER:
+  NUM_WORKERS: 4
+OUTPUT_DIR: "work_dirs/exp5a_preserve_decoder_edge_score_from_stageA_day65_bs6"

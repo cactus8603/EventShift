@@ -1,0 +1,13 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventEdgeSemantic_Exp3a.yaml
+MODEL:
+  EVENT_EDGE:
+    CLASS_AWARE: True
+    NUM_CLASSES: 19
+    CLASS_BOUNDARY_RADIUS: 3
+    CLASS_BCE_WEIGHT: 0.5
+    CLASS_POS_WEIGHT_MAX: 20.0
+SOLVER:
+  IMS_PER_BATCH: 40
+DATALOADER:
+  NUM_WORKERS: 0
+OUTPUT_DIR: "work_dirs/exp3b_event_edge_class_aware_from_day65_bs40_w0"

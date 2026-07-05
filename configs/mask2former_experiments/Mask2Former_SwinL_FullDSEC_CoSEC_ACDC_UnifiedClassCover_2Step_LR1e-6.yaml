@@ -1,0 +1,10 @@
+_BASE_: ./Mask2Former_SwinL_FullDSEC_CoSEC_ACDC_UnifiedClassCover.yaml
+MODEL:
+  WEIGHTS: "work_dirs/swinL_full_dsec_cosec_acdc_unified_bs1/best_model_acdc_all.pth"
+SOLVER:
+  BASE_LR: 0.000001
+  MAX_ITER: 8000
+  CHECKPOINT_PERIOD: 500
+TEST:
+  EVAL_PERIOD: 500
+OUTPUT_DIR: "work_dirs/swinL_full_dsec_cosec_acdc_unified_2step_lr1e-6_bs1"

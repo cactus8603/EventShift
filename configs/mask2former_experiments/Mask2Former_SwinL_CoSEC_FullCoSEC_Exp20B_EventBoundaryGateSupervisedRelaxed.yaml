@@ -1,0 +1,30 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp20A_EventBoundaryGateSupervised.yaml
+MODEL:
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp20B: same supervised gate as Exp20A, with a slightly wider candidate
+    # region. It still requires uncertainty-boundary intersection and event
+    # activity, so it does not fall back to the broad event-active-only failure.
+    UNCERTAIN_FRACTION: 0.40
+    BOUNDARY_RADIUS: 5
+    CLASS_GATE_WEIGHTS: [
+      0.00,  # road
+      0.00,  # sidewalk
+      0.00,  # building
+      0.00,  # wall
+      0.00,  # fence
+      1.00,  # pole
+      1.00,  # traffic light
+      1.00,  # traffic sign
+      0.00,  # vegetation
+      0.00,  # terrain
+      0.00,  # sky
+      1.00,  # person
+      1.00,  # rider
+      0.25,  # car
+      0.00,  # truck
+      0.00,  # bus
+      0.00,  # train
+      1.00,  # motorcycle
+      1.00,  # bicycle
+    ]
+OUTPUT_DIR: "work_dirs/fullcosec-exp20b_event_boundary_gate_supervised_relaxed_bs8"

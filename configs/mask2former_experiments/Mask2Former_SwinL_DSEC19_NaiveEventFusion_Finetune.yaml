@@ -1,0 +1,31 @@
+_BASE_: ./Mask2Former_SwinL_DSEC19_RGBHead_Finetune.yaml
+DATASETS:
+  TRAIN: ("dsec19_train_noval_event",)
+  TEST: ("dsec19_val_event",)
+MODEL:
+  TRAINABLE_PREFIXES:
+    - "sem_seg_head."
+    - "event_fusion."
+  EVENT_FUSION:
+    ENABLED: True
+    IN_CHANNELS: 10
+    STAT_CHANNELS: 4
+    STAGES: ["res3", "res4"]
+    HIDDEN_DIM: 128
+    INIT_ALPHA: 0.05
+    GATE_BIAS: -2.0
+    USE_RELIABILITY_PRIOR: False
+    GATE_SPARSITY_WEIGHT: 0.0
+    GATE_INVALID_WEIGHT: 0.0
+    LOG_GATE_STATS: True
+INPUT:
+  EVENT:
+    NUM_BINS: 5
+    EDGE_WINDOW_RADII_MS: []
+    BOUNDARY_RADII: []
+    SUPPORT_PERCENTILE: 50.0
+    TEMPORAL_THRESHOLD: 0.05
+    SUPPORT_DILATION: 1
+    DROPOUT_PROB: 0.0
+    BIN_DROPOUT_PROB: 0.0
+OUTPUT_DIR: "work_dirs/workshop_dsec19_swinl_naive_event_fusion_from_cityscapes"

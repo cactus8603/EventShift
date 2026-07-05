@@ -1,0 +1,5 @@
+_BASE_: "maskdino_swinl_cosec_dsec_acdc_safe.yaml"
+DATASETS:
+  TRAIN: ("cosec_unified_classcover_v1_train", "dsec19_train_full", "acdc_unified_classcover_v1_all_train")
+  TEST: ("cosec_unified_classcover_v1_day_val", "cosec_unified_classcover_v1_night_val", "acdc_unified_classcover_v1_all_val", "acdc_unified_classcover_v1_night_val")
+OUTPUT_DIR: "work_dirs/maskdino_swinl_full_dsec_cosec_acdc_unified_classcover_v1_bs1"

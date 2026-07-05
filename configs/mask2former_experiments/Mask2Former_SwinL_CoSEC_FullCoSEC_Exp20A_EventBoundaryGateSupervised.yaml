@@ -1,0 +1,19 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp18A_EventBoundaryMinDynamic.yaml
+MODEL:
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp20A: keep Exp18A's strict candidate region, but teach the learned gate
+    # to open on repair-positive pixels. Exp19 showed that scaling the final
+    # gate alone still leaves final logits too close to the RGB baseline.
+    INIT_ALPHA: 0.100
+    GATE_BIAS: -2.5
+    FINAL_GATE_SCALE: 8.0
+    LOSS_CANDIDATE_CE_WEIGHT: 0.08
+    SELECTIVE_REPAIR_GATE_ENABLED: True
+    LOSS_REPAIR_GATE_BCE_WEIGHT: 0.05
+    REPAIR_GATE_POSITIVE_WEIGHT: 8.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 0.5
+    REPAIR_REQUIRE_TARGET_IN_TOPK: True
+    LOSS_PRESERVE_KL_WEIGHT: 6.0
+    LOSS_GATE_SPARSE_WEIGHT: 0.002
+    LOSS_GATE_INVALID_WEIGHT: 0.012
+OUTPUT_DIR: "work_dirs/fullcosec-exp20a_event_boundary_gate_supervised_bs8"

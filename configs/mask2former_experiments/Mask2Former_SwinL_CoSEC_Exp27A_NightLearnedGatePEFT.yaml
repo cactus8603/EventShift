@@ -1,0 +1,10 @@
+_BASE_: Mask2Former_SwinL_CoSEC_Exp26D_NightEventPEFTRelaxedPredictor.yaml
+MODEL:
+  EARLY_EVENT_EDGE_ADAPTER:
+    GATE_SUPERVISION_TARGET: "learned"
+    GATE_POSITIVE_WEIGHT: 8.0
+    GATE_NEGATIVE_WEIGHT: 1.2
+    GATE_BCE_WEIGHT: 0.08
+SOLVER:
+  BASE_LR: 0.000015
+OUTPUT_DIR: "work_dirs/exp27a_night_event_peft_learnedgate_from_night50_bs4"

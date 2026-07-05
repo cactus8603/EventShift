@@ -1,0 +1,6 @@
+_BASE_: Mask2Former_SwinL_CoSEC_DayExp2C_SelectiveRepairGate.yaml
+MODEL:
+  DAY_EVENT_BOUNDARY_REFINER:
+    PAIR_AWARE_ENABLED: False
+    PAIR_WEIGHT_DEFAULT: 1.0
+OUTPUT_DIR: "work_dirs/day-exp2d_simple_repair_nopair_from_stageC_head_bs12"

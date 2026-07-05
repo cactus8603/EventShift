@@ -1,0 +1,72 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp11B_Night50EventActiveUncertainScore.yaml
+MODEL:
+  WEIGHTS: "work_dirs/fullcosec-exp11b_night50_event_uncertain_score_bs6/best_model_cosec_night.pth"
+  TRAINABLE_PREFIXES:
+    - "day_event_boundary_refiner."
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp10C: night counterpart. Keep the event score predictor from Exp11B,
+    # but require RGB to be reasonably confident before event can change logits.
+    INIT_ALPHA: 0.018
+    GATE_BIAS: -3.2
+    USE_EVENT_RELIABILITY: False
+    USE_RGB_UNCERTAINTY: False
+    USE_SEMANTIC_BOUNDARY: True
+    REQUIRE_EVENT_ACTIVE: True
+    EVENT_ACTIVE_SOURCE: "density_or_support"
+    EVENT_ACTIVE_THRESHOLD: 0.0
+    EDGE_THRESHOLD: 0.08
+    EDGE_PROB_POWER: 0.50
+    BOUNDARY_RADIUS: 3
+    MIN_CONFIDENCE_FOR_CORRECTION: 0.60
+    MIN_MARGIN_FOR_CORRECTION: 0.15
+    CLASS_GATE_WEIGHTS: [
+      1.00,  # road
+      1.00,  # sidewalk
+      0.00,  # building
+      0.00,  # wall
+      0.00,  # fence
+      1.00,  # pole
+      0.00,  # traffic light
+      0.00,  # traffic sign
+      0.00,  # vegetation
+      0.00,  # terrain
+      1.00,  # sky
+      0.00,  # person
+      0.00,  # rider
+      0.00,  # car
+      0.00,  # truck
+      0.00,  # bus
+      0.00,  # train
+      1.00,  # motorcycle
+      1.00,  # bicycle
+    ]
+    CLASS_GATE_LOSS_THRESHOLD: 0.50
+    LOSS_ALLOWED_ONLY: True
+    LOSS_ALLOWED_SOFT_THRESHOLD: 0.0
+    LOSS_BOUNDARY_CE_WEIGHT: 0.35
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.0
+    LOSS_CANDIDATE_CE_WEIGHT: 0.08
+    CANDIDATE_CE_REPAIR_POSITIVE_ONLY: True
+    LOSS_PRESERVE_KL_WEIGHT: 6.0
+    LOSS_GATE_SPARSE_WEIGHT: 0.003
+    LOSS_GATE_INVALID_WEIGHT: 0.008
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0007
+    SELECTIVE_REPAIR_GATE_ENABLED: True
+    LOSS_REPAIR_GATE_BCE_WEIGHT: 0.08
+    REPAIR_GATE_POSITIVE_WEIGHT: 8.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 1.0
+    REPAIR_REQUIRE_TARGET_IN_TOPK: True
+    SCORE_PREDICTOR_ENABLED: True
+    SCORE_BCE_WEIGHT: 0.04
+    SCORE_SPARSITY_WEIGHT: 0.002
+    SCORE_POSITIVE_WEIGHT: 3.0
+    SCORE_NEGATIVE_WEIGHT: 1.0
+    REPAIR_SUPERVISE_SCORE: True
+    DETACH_BASE_PROB: True
+    SKIP_MASK2FORMER_LOSS: True
+SOLVER:
+  IMS_PER_BATCH: 6
+  BASE_LR: 0.000003
+TRAIN:
+  EPOCHS: 2
+OUTPUT_DIR: "work_dirs/fullcosec-exp10c_night_highconf_event_classgate_bs6"

@@ -1,0 +1,31 @@
+_BASE_: ../../third_party/Mask2Former/configs/cityscapes/semantic-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_90k.yaml
+DATASETS:
+  TRAIN: ("dsec19_train_noval",)
+  TEST: ("dsec19_val",)
+MODEL:
+  WEIGHTS: "checkpoints/mask2former_cityscapes_swin_large.pkl"
+  TRAINABLE_PREFIXES:
+    - "sem_seg_head."
+SOLVER:
+  IMS_PER_BATCH: 1
+  BASE_LR: 0.000005
+  MAX_ITER: 3000
+  CHECKPOINT_PERIOD: 500
+  AMP:
+    ENABLED: True
+TEST:
+  EVAL_PERIOD: 500
+INPUT:
+  MIN_SIZE_TRAIN: [512, 624, 768]
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 1200
+  MIN_SIZE_TEST: 624
+  MAX_SIZE_TEST: 1200
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (384, 640)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+DATALOADER:
+  NUM_WORKERS: 4
+OUTPUT_DIR: "work_dirs/workshop_dsec19_swinl_rgb_headonly_from_cityscapes"

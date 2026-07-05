@@ -1,0 +1,76 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp11A_Day65EventActiveMinFilter.yaml
+MODEL:
+  WEIGHTS: "work_dirs/hybrid_checkpoints/day65_4352_rgb_with_exp3b_event_edge.pth"
+  TRAINABLE_PREFIXES:
+    - "day_event_boundary_refiner."
+  EVENT_EDGE:
+    BCE_WEIGHT: 0.0
+    DICE_WEIGHT: 0.0
+    CLASS_BCE_WEIGHT: 0.0
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp10B: single-model version of the TTA+event probe idea for Day.
+    # Keep RGB semantics fixed. Let event act only in event-active semantic
+    # boundary regions where RGB is already confident, and mostly on classes
+    # that previously had positive event repair evidence.
+    INIT_ALPHA: 0.012
+    GATE_BIAS: -3.8
+    TOPK_CLASSES: 3
+    USE_EVENT_RELIABILITY: False
+    USE_RGB_UNCERTAINTY: False
+    USE_SEMANTIC_BOUNDARY: True
+    REQUIRE_EVENT_ACTIVE: True
+    EVENT_ACTIVE_SOURCE: "density_or_support"
+    EVENT_ACTIVE_THRESHOLD: 0.0
+    EDGE_THRESHOLD: 0.10
+    EDGE_PROB_POWER: 0.50
+    BOUNDARY_RADIUS: 3
+    MIN_CONFIDENCE_FOR_CORRECTION: 0.70
+    MIN_MARGIN_FOR_CORRECTION: 0.20
+    CLASS_GATE_WEIGHTS: [
+      1.00,  # road
+      0.00,  # sidewalk
+      1.00,  # building
+      0.00,  # wall
+      0.00,  # fence
+      1.00,  # pole
+      0.00,  # traffic light
+      0.00,  # traffic sign
+      0.00,  # vegetation
+      0.00,  # terrain
+      0.00,  # sky
+      1.00,  # person
+      1.00,  # rider
+      0.00,  # car
+      0.00,  # truck
+      0.00,  # bus
+      0.00,  # train
+      0.00,  # motorcycle
+      0.00,  # bicycle
+    ]
+    CLASS_GATE_LOSS_THRESHOLD: 0.50
+    LOSS_ALLOWED_ONLY: True
+    LOSS_ALLOWED_SOFT_THRESHOLD: 0.0
+    LOSS_BOUNDARY_CE_WEIGHT: 0.45
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.0
+    LOSS_CANDIDATE_CE_WEIGHT: 0.08
+    CANDIDATE_CE_REPAIR_POSITIVE_ONLY: True
+    LOSS_PRESERVE_KL_WEIGHT: 5.0
+    LOSS_GATE_SPARSE_WEIGHT: 0.004
+    LOSS_GATE_INVALID_WEIGHT: 0.008
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0005
+    SELECTIVE_REPAIR_GATE_ENABLED: True
+    LOSS_REPAIR_GATE_BCE_WEIGHT: 0.08
+    REPAIR_GATE_POSITIVE_WEIGHT: 8.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 1.0
+    REPAIR_REQUIRE_TARGET_IN_TOPK: True
+    SCORE_PREDICTOR_ENABLED: False
+    SCORE_BCE_WEIGHT: 0.0
+    SCORE_SPARSITY_WEIGHT: 0.0
+    DETACH_BASE_PROB: True
+    SKIP_MASK2FORMER_LOSS: True
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.000004
+TRAIN:
+  EPOCHS: 2
+OUTPUT_DIR: "work_dirs/fullcosec-exp10b_day_highconf_event_classgate_bs8"

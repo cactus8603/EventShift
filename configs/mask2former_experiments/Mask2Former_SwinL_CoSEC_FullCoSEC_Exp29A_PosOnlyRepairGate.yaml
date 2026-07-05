@@ -1,0 +1,2 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp24A_PosOnlyCE_StrongGate.yaml
+OUTPUT_DIR: "work_dirs/fullcosec-exp29a_posonly_repairgate_from_day65_4352_bs8"

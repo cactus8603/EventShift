@@ -1,0 +1,83 @@
+_BASE_: Mask2Former_SwinL_CoSEC_DayExp2C_SelectiveRepairGate.yaml
+DATASETS:
+  TRAIN: ("cosec_train_event",)
+  TEST: ("cosec_day_val_event", "cosec_night_val_event")
+MODEL:
+  WEIGHTS: "work_dirs/day-exp1c_stageC_head_from_stageB_strong_bs8/model_final.pth"
+  TRAINABLE_PREFIXES:
+    - "day_event_boundary_refiner."
+  DAY_EVENT_BOUNDARY_REFINER:
+    DETACH_BASE_PROB: True
+    SKIP_MASK2FORMER_LOSS: True
+    SCORE_PREDICTOR_ENABLED: False
+    SCORE_BCE_WEIGHT: 0.0
+    SCORE_SPARSITY_WEIGHT: 0.0
+    SCORE_POSITIVE_WEIGHT: 2.0
+    SCORE_NEGATIVE_WEIGHT: 1.0
+    SELECTIVE_REPAIR_GATE_ENABLED: True
+    LOSS_REPAIR_GATE_BCE_WEIGHT: 0.05
+    REPAIR_GATE_POSITIVE_WEIGHT: 5.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 1.0
+    REPAIR_REQUIRE_TARGET_IN_TOPK: True
+    REPAIR_SUPERVISE_SCORE: False
+    PAIR_AWARE_ENABLED: True
+    PAIR_WEIGHT_DEFAULT: 0.0
+    LOSS_BOUNDARY_CE_WEIGHT: 1.0
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.5
+    LOSS_CANDIDATE_CE_WEIGHT: 0.1
+    LOSS_PRESERVE_KL_WEIGHT: 2.0
+    LOSS_GATE_INVALID_WEIGHT: 0.002
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0002
+    LOSS_PAIR_SUPPRESS_GATE_WEIGHT: 0.004
+    LOSS_PAIR_SUPPRESS_DELTA_WEIGHT: 0.0004
+    PAIR_ALLOW_WEIGHTS: [
+      1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 1, 0, 0, 0, 0, 0, 0, 1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 1, 0, 0, 0, 0, 1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 1, 0, 1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 1.5, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.5, 1, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 1.5, 0, 0, 1.5, 1.5, 0, 0, 0, 0, 1, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.5, 0, 0, 0, 0, 0, 1,
+    ]
+    PAIR_SUPPRESS_WEIGHTS: [
+      0, 1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 1, 1.5, 0, 0, 0, 0, 1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 1, 0, 0, 0, 1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 1, 0, 1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 1e-06
+DATALOADER:
+  NUM_WORKERS: 8
+TRAIN:
+  EPOCHS: 2
+  NUM_TRAIN_SAMPLES: 2264
+OUTPUT_DIR: "work_dirs/day-exp7a_hard_pair_support_from_stageC_refiner_bs8"

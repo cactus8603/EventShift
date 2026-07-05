@@ -1,0 +1,33 @@
+_BASE_: ../../third_party/Mask2Former/configs/cityscapes/semantic-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_90k.yaml
+DATASETS:
+  TRAIN: ("cosec_day_train_rare_focus_repeat4",)
+  TEST: ("cosec_day_val", "cosec_night_val")
+MODEL:
+  WEIGHTS: "work_dirs/swinL_seqholdout305_from_latest_night/best_model_cosec_day.pth"
+  TRAINABLE_PREFIXES: ["sem_seg_head."]
+SOLVER:
+  IMS_PER_BATCH: 10
+  BASE_LR: 0.00000005
+  AMP:
+    ENABLED: True
+TEST:
+  EVAL_PERIOD: 0
+TRAIN:
+  EPOCHS: 2
+  NUM_TRAIN_SAMPLES: 6669
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+INPUT:
+  MIN_SIZE_TRAIN: [512, 624, 768]
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 1200
+  MIN_SIZE_TEST: 624
+  MAX_SIZE_TEST: 1200
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+DATALOADER:
+  NUM_WORKERS: 10
+OUTPUT_DIR: "work_dirs/day-rarefocus_headonly_from_day65_lr5e-8_bs10"

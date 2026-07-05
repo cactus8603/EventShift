@@ -1,0 +1,40 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp2B_EventActiveOnly.yaml
+MODEL:
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Full-CoSEC conservative class routing. RGB still decides the class;
+    # event correction gets more freedom on locally structured classes and is
+    # damped on broad classes that earlier day diagnostics showed are easy to
+    # damage.
+    CLASS_GATE_WEIGHTS: [
+      1.15,  # road
+      0.25,  # sidewalk
+      1.30,  # building
+      0.45,  # wall
+      0.35,  # fence
+      1.35,  # pole
+      0.55,  # traffic light
+      0.35,  # traffic sign
+      0.20,  # vegetation
+      0.35,  # terrain
+      0.20,  # sky
+      1.20,  # person
+      1.30,  # rider
+      0.35,  # car
+      0.55,  # truck
+      0.55,  # bus
+      0.55,  # train
+      0.75,  # motorcycle
+      0.65,  # bicycle
+    ]
+    CLASS_GATE_LOSS_THRESHOLD: 0.50
+    EDGE_THRESHOLD: 0.16
+    EDGE_PROB_POWER: 1.0
+    TOPK_CLASSES: 2
+    LOSS_BOUNDARY_CE_WEIGHT: 0.5
+    LOSS_CANDIDATE_CE_WEIGHT: 0.18
+    LOSS_PRESERVE_KL_WEIGHT: 4.0
+    LOSS_GATE_SPARSE_WEIGHT: 0.001
+    LOSS_GATE_INVALID_WEIGHT: 0.006
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0006
+    LOSS_REPAIR_GATE_BCE_WEIGHT: 0.05
+OUTPUT_DIR: "work_dirs/fullcosec-exp2e_event_active_classgate_highres_bs6"

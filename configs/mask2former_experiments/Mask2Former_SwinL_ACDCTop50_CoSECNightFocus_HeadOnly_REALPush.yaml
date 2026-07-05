@@ -1,0 +1,9 @@
+_BASE_: Mask2Former_SwinL_ACDCTop50_CoSECNightFocus_HeadOnly_SafeREAL.yaml
+DATASETS:
+  TRAIN: ("cosec_train_night_focus_day700", "acdc_night_top50_repeat8")
+SOLVER:
+  BASE_LR: 0.0000008
+TRAIN:
+  EPOCHS: 4
+  NUM_TRAIN_SAMPLES: 1447  # 700 CoSEC day + 347 CoSEC night + 8x50 ACDC top50
+OUTPUT_DIR: "work_dirs/acdc_top50_cosec_nightfocus_headonly_realpush_lr8e-7_bs10"

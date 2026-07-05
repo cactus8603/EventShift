@@ -1,0 +1,34 @@
+_BASE_: ../../third_party/Mask2Former/configs/cityscapes/semantic-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_90k.yaml
+DATASETS:
+  TRAIN: ("cosec_night_train",)
+  TEST: ("cosec_day_val", "cosec_night_val")
+MODEL:
+  WEIGHTS: "work_dirs/swinL_cosec_dayonly_from_day65_freeze_backbone_lr5e-7/best_model_cosec_day.pth"
+  TRAINABLE_PREFIXES:
+    - "sem_seg_head.predictor.decoder_norm."
+    - "sem_seg_head.predictor.class_embed."
+    - "sem_seg_head.predictor.mask_embed."
+SOLVER:
+  IMS_PER_BATCH: 6
+  BASE_LR: 0.00000005
+  AMP:
+    ENABLED: True
+TRAIN:
+  EPOCHS: 4
+  NUM_TRAIN_SAMPLES: 347
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+INPUT:
+  MIN_SIZE_TRAIN: [624, 768, 896]
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 1400
+  MIN_SIZE_TEST: 768
+  MAX_SIZE_TEST: 1400
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (640, 1280)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+DATALOADER:
+  NUM_WORKERS: 10
+OUTPUT_DIR: "work_dirs/night-exp10b_highres_from_dayonly65_43_predictor_lr5e-8_bs6"

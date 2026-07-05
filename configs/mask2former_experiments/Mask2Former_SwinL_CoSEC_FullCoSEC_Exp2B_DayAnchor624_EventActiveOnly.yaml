@@ -1,0 +1,7 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp2B_EventActiveOnly.yaml
+MODEL:
+  WEIGHTS: "work_dirs/exp3b_event_edge_class_aware_from_day65_bs40_w0/best_model_cosec_day.pth"
+INPUT:
+  MIN_SIZE_TEST: 624
+  MAX_SIZE_TEST: 1200
+OUTPUT_DIR: "work_dirs/fullcosec-exp2b_day_anchor624_event_active_only_bs6"

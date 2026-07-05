@@ -1,0 +1,33 @@
+project:
+  name: EventShift-CoSEC-EventOnly
+  root: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}
+
+data:
+  brenet_root: ${BRENET_ROOT:-/path/to/BRENet}
+  manifest: ${EVENTSHIFT_COSEC_MANIFEST:-/path/to/BRENet/projects/brenet_cosec/manifests/cosec_train_bidir_50ms.json}
+  train_dataset: cosec_train_event
+  val_datasets:
+    - cosec_day_val_event
+    - cosec_night_val_event
+
+model:
+  name: event_edge_only
+  backend: mask2former
+  backend_config: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/configs/mask2former_experiments/Mask2Former_SwinL_CoSEC_EventEdgeSemantic_Exp3a.yaml
+  num_classes: 19
+  rgb_encoder: frozen_rgb_feature
+  event_encoder: event_edge
+  fusion: edge_head
+
+event:
+  enabled: true
+  num_bins: 5
+  edge_window_radii_ms: [25, 50, 200]
+  boundary_radii: [3, 5]
+  support_percentile: 80.0
+
+train:
+  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/cosec_event_only
+  num_gpus: 1
+  batch_size: 48
+  lr: 0.0001

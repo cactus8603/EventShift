@@ -1,0 +1,51 @@
+_BASE_: Mask2Former_SwinL_CoSEC_DayExp1C_StageC_Head.yaml
+MODEL:
+  WEIGHTS: "work_dirs/day-exp1c_stageC_head_from_stageB_strong_bs8/model_final.pth"
+  TRAINABLE_PREFIXES:
+    - "day_event_boundary_refiner."
+  DAY_EVENT_BOUNDARY_REFINER:
+    # This is the lowest-risk follow-up: do not move the output head again.
+    # Use Stage C as a fixed teacher/base and only teach the event refiner to
+    # repair positive-support classes while preserving confident RGB regions.
+    DETACH_BASE_PROB: True
+    SKIP_MASK2FORMER_LOSS: True
+    UNCERTAIN_FRACTION: 0.30
+    EDGE_PROB_POWER: 0.50
+    TOPK_CLASSES: 2
+    CLASS_GATE_WEIGHTS: [
+      1.40,  # road
+      0.05,  # sidewalk
+      1.70,  # building
+      0.10,  # wall
+      0.05,  # fence
+      1.45,  # pole
+      0.10,  # traffic light
+      0.05,  # traffic sign
+      0.02,  # vegetation
+      0.05,  # terrain
+      0.02,  # sky
+      1.35,  # person
+      1.55,  # rider
+      0.05,  # car
+      0.10,  # truck
+      0.10,  # bus
+      0.10,  # train
+      0.02,  # motorcycle
+      0.05,  # bicycle
+    ]
+    CLASS_GATE_LOSS_THRESHOLD: 0.90
+    LOSS_BOUNDARY_CE_WEIGHT: 1.0
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.5
+    LOSS_CANDIDATE_CE_WEIGHT: 0.25
+    CANDIDATE_LOGIT_SCALE: 1.0
+    LOSS_PRESERVE_KL_WEIGHT: 4.0
+    LOSS_GATE_INVALID_WEIGHT: 0.004
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0004
+SOLVER:
+  IMS_PER_BATCH: 12
+  BASE_LR: 0.00001
+DATALOADER:
+  NUM_WORKERS: 8
+TRAIN:
+  EPOCHS: 2
+OUTPUT_DIR: "work_dirs/day-exp1e_refiner_only_positive_repair_from_stageC_head_bs12"

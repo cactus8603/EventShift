@@ -1,0 +1,75 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventRes34_Epoch.yaml
+DATASETS:
+  TRAIN: ("cosec_day_train_event",)
+  TEST: ("cosec_day_val_event", "cosec_night_val_event")
+MODEL:
+  WEIGHTS: "work_dirs/swinL_cosec_dayonly_from_day65_freeze_backbone_lr5e-7/best_model_cosec_day.pth"
+  TRAINABLE_PREFIXES:
+    - "early_event_edge_adapter."
+  EVENT_FUSION:
+    ENABLED: False
+  EVENT_EDGE:
+    ENABLED: False
+  EVENT_EDGE_GUIDE:
+    ENABLED: False
+  EVENT_PRESERVE:
+    ENABLED: False
+  DAY_EVENT_BOUNDARY_REFINER:
+    ENABLED: False
+  EARLY_EVENT_EDGE_ADAPTER:
+    ENABLED: True
+    IN_CHANNELS: 9
+    STAT_CHANNELS: 4
+    HIDDEN_DIM: 64
+    INIT_ALPHA: 0.0015
+    ALPHA_MAX: 0.025
+    GATE_BIAS: -4.5
+    EDGE_PROB_POWER: 1.5
+    USE_EVENT_RELIABILITY: True
+    RELIABILITY_FLOOR: 0.12
+    RELIABILITY_THRESHOLD: 0.04
+    EVENT_EDGE_THRESHOLD: 0.16
+    CONFIDENCE_THRESHOLD: 0.70
+    MARGIN_THRESHOLD: 0.28
+    ENTROPY_THRESHOLD: 0.52
+    REQUIRE_BOUNDARY: True
+    BOUNDARY_RADIUS: 3
+    GATE_BCE_WEIGHT: 0.08
+    GATE_POSITIVE_WEIGHT: 5.0
+    GATE_NEGATIVE_WEIGHT: 1.5
+    GATE_SUPERVISION_DETACH: True
+    # Day event evidence was most reliable on boundary/dynamic classes; keep
+    # broad classes available but explicitly avoid road/vegetation drift.
+    DENY_PRED_CLASSES: [0, 8]
+    LOG_STATS: True
+SOLVER:
+  IMS_PER_BATCH: 4
+  BASE_LR: 0.000001
+  AMP:
+    ENABLED: True
+TEST:
+  EVAL_PERIOD: 480
+TRAIN:
+  EPOCHS: 2
+  NUM_TRAIN_SAMPLES: 1917
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+INPUT:
+  MIN_SIZE_TRAIN: [512, 624, 768]
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 1200
+  MIN_SIZE_TEST: 624
+  MAX_SIZE_TEST: 1200
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+  EVENT:
+    EDGE_WINDOW_RADII_MS: [25, 50, 200]
+    BOUNDARY_RADII: [3, 5]
+    DROPOUT_PROB: 0.0
+    BIN_DROPOUT_PROB: 0.0
+DATALOADER:
+  NUM_WORKERS: 8
+OUTPUT_DIR: "work_dirs/exp26a_day_event_peft_adapter_only_from_day65_4352_bs4"

@@ -1,0 +1,20 @@
+_BASE_: Mask2Former_SwinL_CoSEC_Exp26D_NightEventPEFTRelaxedPredictor.yaml
+DATASETS:
+  TRAIN: ("cosec_train_event",)
+  TEST: ("cosec_day_val_event", "cosec_night_val_event")
+MODEL:
+  EARLY_EVENT_EDGE_ADAPTER:
+    GATE_SUPERVISION_TARGET: "final"
+    GATE_BCE_WEIGHT: 0.08
+    GATE_POSITIVE_WEIGHT: 6.0
+    GATE_NEGATIVE_WEIGHT: 1.2
+SOLVER:
+  BASE_LR: 0.000005
+TEST:
+  EVAL_PERIOD: 566
+TRAIN:
+  EPOCHS: 2
+  NUM_TRAIN_SAMPLES: 2264
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+OUTPUT_DIR: "work_dirs/exp28a_fullcosec_event_peft_replay_from_night50_bs4"

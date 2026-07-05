@@ -1,0 +1,11 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp18A_EventBoundaryMinDynamic.yaml
+MODEL:
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp19A: keep Exp18A's strict candidate mask, but amplify only the final
+    # residual inside allowed pixels. This tests the observed bottleneck where
+    # candidate logits can lower CE but final logits barely move.
+    FINAL_GATE_SCALE: 4.0
+    LOSS_PRESERVE_KL_WEIGHT: 4.5
+    LOSS_GATE_SPARSE_WEIGHT: 0.002
+    LOSS_GATE_INVALID_WEIGHT: 0.008
+OUTPUT_DIR: "work_dirs/fullcosec-exp19a_event_boundary_min_scale4_bs8"

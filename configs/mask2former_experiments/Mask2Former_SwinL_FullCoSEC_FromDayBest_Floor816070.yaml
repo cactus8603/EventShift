@@ -1,0 +1,16 @@
+_BASE_: ./Mask2Former_SwinL_FullDSEC_CoSEC_ACDC_UnifiedClassCover.yaml
+DATASETS:
+  TRAIN: ("cosec_unified_classcover_v1_train",)
+  TEST: ("cosec_unified_classcover_v1_day_val",)
+MODEL:
+  WEIGHTS: "/work/u1621738/ebmv_eccv/eccv_segment/unified_cosec_acdc/classcover_v1/checkpoints/full_desc_cosec_acdc/mask2former/selected/best_model_cosec_day.pth"
+SOLVER:
+  BASE_LR: 0.0000005
+  MAX_ITER: 6000
+  CHECKPOINT_PERIOD: 100000000
+TEST:
+  EVAL_PERIOD: 500
+TRAIN:
+  BEST_CHECKPOINT_MIN_MIOU: ["day:81.6070"]
+  DISABLE_PERIODIC_CHECKPOINT: True
+OUTPUT_DIR: "work_dirs/swinL_full_cosec_from_day_best_floor816070_lr5e-7"

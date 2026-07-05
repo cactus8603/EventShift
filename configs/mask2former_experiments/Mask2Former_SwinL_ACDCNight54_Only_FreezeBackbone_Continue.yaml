@@ -1,0 +1,30 @@
+_BASE_: ../../third_party/Mask2Former/configs/cityscapes/semantic-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_90k.yaml
+DATASETS:
+  TRAIN: ("acdc_night_train",)
+  TEST: ("acdc_night_val", "cosec_day_val", "cosec_night_val")
+MODEL:
+  WEIGHTS: "work_dirs/swinL_acdc_night_proxy_real_from_cosec_night50/best_model_acdc_night.pth"
+  TRAINABLE_PREFIXES: ["sem_seg_head."]
+SOLVER:
+  IMS_PER_BATCH: 3
+  BASE_LR: 0.0000005
+  MAX_ITER: 804
+  CHECKPOINT_PERIOD: 804
+  AMP:
+    ENABLED: True
+TEST:
+  EVAL_PERIOD: 134
+INPUT:
+  MIN_SIZE_TRAIN: [512, 624, 768]
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 1200
+  MIN_SIZE_TEST: 624
+  MAX_SIZE_TEST: 1200
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+DATALOADER:
+  NUM_WORKERS: 8
+OUTPUT_DIR: "work_dirs/swinL_acdc_night54_freeze_backbone_continue_lr5e-7"

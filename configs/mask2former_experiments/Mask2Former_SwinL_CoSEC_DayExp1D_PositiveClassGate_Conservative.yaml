@@ -1,0 +1,52 @@
+_BASE_: Mask2Former_SwinL_CoSEC_DayExp1C_StageC_Head.yaml
+MODEL:
+  WEIGHTS: "work_dirs/day-exp1c_stageC_head_from_stageB_strong_bs8/model_final.pth"
+  TRAINABLE_PREFIXES:
+    - "day_event_boundary_refiner."
+    - "sem_seg_head.predictor.decoder_norm."
+    - "sem_seg_head.predictor.class_embed."
+    - "sem_seg_head.predictor.mask_embed."
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Stage C repaired building/road/pole/rider/person, but damaged
+    # vegetation/sidewalk/sky/sign/car in reliable event support. Keep the
+    # segmentation head trainable, but make the event loss act mostly on the
+    # net-positive classes.
+    UNCERTAIN_FRACTION: 0.30
+    EDGE_PROB_POWER: 0.50
+    CLASS_GATE_WEIGHTS: [
+      1.35,  # road
+      0.10,  # sidewalk
+      1.60,  # building
+      0.20,  # wall
+      0.10,  # fence
+      1.40,  # pole
+      0.20,  # traffic light
+      0.10,  # traffic sign
+      0.05,  # vegetation
+      0.10,  # terrain
+      0.05,  # sky
+      1.35,  # person
+      1.50,  # rider
+      0.10,  # car
+      0.20,  # truck
+      0.20,  # bus
+      0.20,  # train
+      0.05,  # motorcycle
+      0.10,  # bicycle
+    ]
+    CLASS_GATE_LOSS_THRESHOLD: 0.90
+    SKIP_MASK2FORMER_LOSS: False
+    LOSS_BOUNDARY_CE_WEIGHT: 1.0
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.5
+    LOSS_CANDIDATE_CE_WEIGHT: 0.0
+    LOSS_PRESERVE_KL_WEIGHT: 3.5
+    LOSS_GATE_INVALID_WEIGHT: 0.003
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0003
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.000001
+DATALOADER:
+  NUM_WORKERS: 6
+TRAIN:
+  EPOCHS: 2
+OUTPUT_DIR: "work_dirs/day-exp1d_positive_classgate_conservative_from_stageC_head_bs8"

@@ -1,0 +1,10 @@
+_BASE_: "maskdino_swinl_full_dsec_cosec_acdc_unified_classcover_v1.yaml"
+MODEL:
+  WEIGHTS: "work_dirs/maskdino_swinl_full_dsec_cosec_acdc_unified_classcover_v1_bs1/best_model_acdc_all.pth"
+SOLVER:
+  BASE_LR: 0.000001
+  MAX_ITER: 8000
+  CHECKPOINT_PERIOD: 500
+TEST:
+  EVAL_PERIOD: 500
+OUTPUT_DIR: "work_dirs/maskdino_swinl_full_dsec_cosec_acdc_unified_classcover_v1_2step_lr1e-6_bs1"

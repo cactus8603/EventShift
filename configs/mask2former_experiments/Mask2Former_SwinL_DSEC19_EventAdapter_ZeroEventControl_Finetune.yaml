@@ -1,0 +1,8 @@
+_BASE_: ./Mask2Former_SwinL_DSEC19_EventAdapter_Finetune.yaml
+INPUT:
+  EVENT:
+    ZERO_EVENT: True
+    DROPOUT_PROB: 0.0
+    BIN_DROPOUT_PROB: 0.0
+    EDGE_DROPOUT_PROB: 0.0
+OUTPUT_DIR: "work_dirs/workshop_dsec19_swinl_event_adapter_zero_event_control_from_cityscapes"

@@ -1,0 +1,79 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp2A_FrozenRGB_EventLogitCorrection.yaml
+DATASETS:
+  TRAIN: ("cosec_train_event",)
+  TEST: ("cosec_day_val_event", "cosec_night_val_event")
+MODEL:
+  WEIGHTS: "work_dirs/hybrid_checkpoints/day65_4352_rgb_with_exp3b_event_edge.pth"
+  TRAINABLE_PREFIXES:
+    - "day_event_boundary_refiner."
+  EVENT_EDGE:
+    BCE_WEIGHT: 0.0
+    DICE_WEIGHT: 0.0
+    CLASS_BCE_WEIGHT: 0.0
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp11A tests the user's newest constraint: event may only edit where
+    # event exists, but we do not make reliability/uncertainty/boundary filters
+    # all mandatory because their intersection can shrink the signal too much.
+    INIT_ALPHA: 0.015
+    GATE_BIAS: -3.5
+    TOPK_CLASSES: 3
+    USE_EVENT_RELIABILITY: False
+    USE_RGB_UNCERTAINTY: False
+    USE_SEMANTIC_BOUNDARY: False
+    REQUIRE_EVENT_ACTIVE: True
+    EVENT_ACTIVE_SOURCE: "density"
+    EVENT_ACTIVE_THRESHOLD: 0.03
+    EDGE_THRESHOLD: 0.12
+    EDGE_PROB_POWER: 0.5
+    UNCERTAIN_FRACTION: 1.0
+    EDGE_ONLY_CORRECTION: False
+    LOSS_ALLOWED_ONLY: True
+    LOSS_ALLOWED_SOFT_THRESHOLD: 0.0
+    LOSS_BOUNDARY_CE_WEIGHT: 0.35
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.0
+    LOSS_CANDIDATE_CE_WEIGHT: 0.12
+    CANDIDATE_CE_REPAIR_POSITIVE_ONLY: True
+    LOSS_PRESERVE_KL_WEIGHT: 4.0
+    LOSS_GATE_SPARSE_WEIGHT: 0.004
+    LOSS_GATE_INVALID_WEIGHT: 0.006
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0005
+    SELECTIVE_REPAIR_GATE_ENABLED: True
+    LOSS_REPAIR_GATE_BCE_WEIGHT: 0.08
+    REPAIR_GATE_POSITIVE_WEIGHT: 8.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 1.0
+    REPAIR_REQUIRE_TARGET_IN_TOPK: True
+    SCORE_PREDICTOR_ENABLED: False
+    SCORE_BCE_WEIGHT: 0.0
+    SCORE_SPARSITY_WEIGHT: 0.0
+    DETACH_BASE_PROB: True
+    SKIP_MASK2FORMER_LOSS: True
+    LOG_STATS: True
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.000004
+  AMP:
+    ENABLED: True
+TRAIN:
+  EPOCHS: 2
+  NUM_TRAIN_SAMPLES: 2264
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+INPUT:
+  MIN_SIZE_TRAIN: [512, 624, 768]
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 1200
+  MIN_SIZE_TEST: 624
+  MAX_SIZE_TEST: 1200
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (512, 1024)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+  EVENT:
+    EDGE_WINDOW_RADII_MS: [25, 50, 200]
+    BOUNDARY_RADII: [3, 5]
+    DROPOUT_PROB: 0.0
+    BIN_DROPOUT_PROB: 0.0
+DATALOADER:
+  NUM_WORKERS: 8
+OUTPUT_DIR: "work_dirs/fullcosec-exp11a_day65_event_active_minfilter_bs8"

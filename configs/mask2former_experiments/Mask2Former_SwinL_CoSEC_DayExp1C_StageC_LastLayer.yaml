@@ -1,0 +1,28 @@
+_BASE_: Mask2Former_SwinL_CoSEC_DayExp1C_StageB_Strong.yaml
+MODEL:
+  WEIGHTS: "work_dirs/day-exp1c_stageB_strong_from_a005_final_bs12/model_final.pth"
+  TRAINABLE_PREFIXES:
+    - "day_event_boundary_refiner."
+    - "sem_seg_head.predictor.transformer_cross_attention_layers.8."
+    - "sem_seg_head.predictor.transformer_self_attention_layers.8."
+    - "sem_seg_head.predictor.transformer_ffn_layers.8."
+    - "sem_seg_head.predictor.decoder_norm."
+    - "sem_seg_head.predictor.class_embed."
+    - "sem_seg_head.predictor.mask_embed."
+  DAY_EVENT_BOUNDARY_REFINER:
+    DETACH_BASE_PROB: False
+    SKIP_MASK2FORMER_LOSS: False
+    LOSS_BOUNDARY_CE_WEIGHT: 1.0
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.5
+    LOSS_CANDIDATE_CE_WEIGHT: 0.0
+    LOSS_PRESERVE_KL_WEIGHT: 2.0
+    LOSS_GATE_INVALID_WEIGHT: 0.001
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0001
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.000001
+DATALOADER:
+  NUM_WORKERS: 6
+TRAIN:
+  EPOCHS: 2
+OUTPUT_DIR: "work_dirs/day-exp1c_stageC_lastlayer_from_stageB_strong_bs8"

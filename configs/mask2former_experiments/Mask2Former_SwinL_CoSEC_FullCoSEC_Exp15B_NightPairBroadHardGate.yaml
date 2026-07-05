@@ -1,0 +1,84 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp11B_Night50EventActiveUncertainScore.yaml
+MODEL:
+  WEIGHTS: "work_dirs/fullcosec-exp11b_night50_event_uncertain_score_bs6/best_model_cosec_night.pth"
+  TRAINABLE_PREFIXES:
+    - "day_event_boundary_refiner."
+  DAY_EVENT_BOUNDARY_REFINER:
+    DETACH_BASE_PROB: True
+    SKIP_MASK2FORMER_LOSS: True
+    SCORE_PREDICTOR_ENABLED: True
+    SCORE_BCE_WEIGHT: 0.04
+    SCORE_SPARSITY_WEIGHT: 0.002
+    SCORE_POSITIVE_WEIGHT: 2.0
+    SCORE_NEGATIVE_WEIGHT: 1.0
+    SELECTIVE_REPAIR_GATE_ENABLED: True
+    LOSS_REPAIR_GATE_BCE_WEIGHT: 0.08
+    REPAIR_GATE_POSITIVE_WEIGHT: 5.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 1.0
+    REPAIR_REQUIRE_TARGET_IN_TOPK: True
+    REPAIR_SUPERVISE_SCORE: True
+    EVENT_ACTIVE_SOURCE: "density_or_support"
+    PAIR_AWARE_ENABLED: True
+    PAIR_WEIGHT_DEFAULT: 0.0
+    HARD_PAIR_GATE_ENABLED: True
+    HARD_PAIR_GATE_THRESHOLD: 1.0
+    HARD_PAIR_GATE_INCLUDE_IDENTITY: False
+    HARD_PAIR_SUPPRESS_ENABLED: True
+    LOSS_BOUNDARY_CE_WEIGHT: 1.0
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.5
+    LOSS_CANDIDATE_CE_WEIGHT: 0.08
+    LOSS_PRESERVE_KL_WEIGHT: 5.0
+    LOSS_GATE_INVALID_WEIGHT: 0.006
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0007
+    LOSS_PAIR_SUPPRESS_GATE_WEIGHT: 0.008
+    LOSS_PAIR_SUPPRESS_DELTA_WEIGHT: 0.0008
+    PAIR_ALLOW_WEIGHTS: [
+      1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      1.5, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      1.5, 0, 0, 1, 0, 0, 0, 0, 1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1.25, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 1.5, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+    ]
+    PAIR_SUPPRESS_WEIGHTS: [
+      0, 1.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]
+SOLVER:
+  IMS_PER_BATCH: 6
+  BASE_LR: 2e-06
+DATALOADER:
+  NUM_WORKERS: 8
+TRAIN:
+  EPOCHS: 1
+OUTPUT_DIR: "work_dirs/fullcosec-exp15b_night_pair_broad_hardgate_from_exp11b_bs6"

@@ -1,0 +1,85 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp2A_FrozenRGB_EventLogitCorrection.yaml
+DATASETS:
+  TRAIN: ("cosec_train_event",)
+  TEST: ("cosec_day_val_event", "cosec_night_val_event")
+MODEL:
+  WEIGHTS: "work_dirs/exp5e_hybrid_checkpoints/stageA_eventedge_night50_rgb.pth"
+  TRAINABLE_PREFIXES:
+    - "day_event_boundary_refiner."
+  EVENT_EDGE:
+    BCE_WEIGHT: 0.0
+    DICE_WEIGHT: 0.0
+    CLASS_BCE_WEIGHT: 0.0
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp11B is the night-oriented counterpart: event-active is still required,
+    # but RGB uncertainty and a repair-supervised event score decide how much to
+    # trust the event cue. Semantic-boundary intersection is disabled to avoid
+    # over-shrinking the night signal.
+    INIT_ALPHA: 0.025
+    GATE_BIAS: -2.7
+    TOPK_CLASSES: 3
+    TAU_MARGIN: 0.45
+    ENTROPY_THRESHOLD: 0.40
+    UNCERTAIN_FRACTION: 0.45
+    USE_EVENT_RELIABILITY: False
+    USE_RGB_UNCERTAINTY: True
+    USE_SEMANTIC_BOUNDARY: False
+    REQUIRE_EVENT_ACTIVE: True
+    EVENT_ACTIVE_SOURCE: "density_or_support"
+    EVENT_ACTIVE_THRESHOLD: 0.0
+    EDGE_THRESHOLD: 0.08
+    EDGE_PROB_POWER: 0.5
+    EDGE_ONLY_CORRECTION: False
+    LOSS_ALLOWED_ONLY: True
+    LOSS_ALLOWED_SOFT_THRESHOLD: 0.0
+    LOSS_BOUNDARY_CE_WEIGHT: 0.10
+    LOSS_UNCERTAIN_CE_WEIGHT: 0.50
+    LOSS_CANDIDATE_CE_WEIGHT: 0.12
+    CANDIDATE_CE_REPAIR_POSITIVE_ONLY: True
+    LOSS_PRESERVE_KL_WEIGHT: 5.0
+    LOSS_GATE_SPARSE_WEIGHT: 0.002
+    LOSS_GATE_INVALID_WEIGHT: 0.006
+    LOSS_DELTA_NON_BOUNDARY_WEIGHT: 0.0007
+    SELECTIVE_REPAIR_GATE_ENABLED: True
+    LOSS_REPAIR_GATE_BCE_WEIGHT: 0.10
+    REPAIR_GATE_POSITIVE_WEIGHT: 10.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 1.0
+    REPAIR_REQUIRE_TARGET_IN_TOPK: True
+    SCORE_PREDICTOR_ENABLED: True
+    SCORE_BCE_WEIGHT: 0.04
+    SCORE_SPARSITY_WEIGHT: 0.002
+    SCORE_POSITIVE_WEIGHT: 4.0
+    SCORE_NEGATIVE_WEIGHT: 1.0
+    REPAIR_SUPERVISE_SCORE: True
+    DETACH_BASE_PROB: True
+    SKIP_MASK2FORMER_LOSS: True
+    LOG_STATS: True
+SOLVER:
+  IMS_PER_BATCH: 6
+  BASE_LR: 0.000006
+  AMP:
+    ENABLED: True
+TRAIN:
+  EPOCHS: 2
+  NUM_TRAIN_SAMPLES: 2264
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+INPUT:
+  MIN_SIZE_TRAIN: [624, 768, 896]
+  MIN_SIZE_TRAIN_SAMPLING: "choice"
+  MAX_SIZE_TRAIN: 1400
+  MIN_SIZE_TEST: 768
+  MAX_SIZE_TEST: 1400
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (640, 1280)
+    SINGLE_CATEGORY_MAX_AREA: 1.0
+  EVENT:
+    EDGE_WINDOW_RADII_MS: [25, 50, 200]
+    BOUNDARY_RADII: [3, 5]
+    DROPOUT_PROB: 0.0
+    BIN_DROPOUT_PROB: 0.0
+DATALOADER:
+  NUM_WORKERS: 8
+OUTPUT_DIR: "work_dirs/fullcosec-exp11b_night50_event_uncertain_score_bs6"

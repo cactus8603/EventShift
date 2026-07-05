@@ -1,0 +1,23 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventReliability_Exp2.yaml
+DATASETS:
+  TRAIN: ("cosec_night_train_event",)
+  TEST: ("cosec_day_val_event", "cosec_night_val_event")
+MODEL:
+  WEIGHTS: "work_dirs/swinL_seqholdout305_from_latest_night/best_model_cosec_night.pth"
+  EVENT_FUSION:
+    TRAIN_ONLY_EVENT: True
+SOLVER:
+  IMS_PER_BATCH: 2
+  BASE_LR: 0.00005
+  MAX_ITER: 500
+  CHECKPOINT_PERIOD: 100
+  AMP:
+    ENABLED: True
+TEST:
+  EVAL_PERIOD: 100
+TRAIN:
+  EPOCHS: 0
+  NUM_TRAIN_SAMPLES: 347
+  EVAL_EVERY_EPOCH: False
+  CHECKPOINT_EVERY_EPOCH: False
+OUTPUT_DIR: "work_dirs/swinL_cosec_event_reliability_nightonly_from_night50_trainonlyevent_lr5e-5"

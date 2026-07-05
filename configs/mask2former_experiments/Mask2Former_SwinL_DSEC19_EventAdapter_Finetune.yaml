@@ -1,0 +1,38 @@
+_BASE_: ./Mask2Former_SwinL_DSEC19_RGBHead_Finetune.yaml
+DATASETS:
+  TRAIN: ("dsec19_train_noval_event",)
+  TEST: ("dsec19_val_event",)
+MODEL:
+  TRAINABLE_PREFIXES:
+    - "sem_seg_head."
+    - "early_event_edge_adapter."
+  EARLY_EVENT_EDGE_ADAPTER:
+    ENABLED: True
+    IN_CHANNELS: 9
+    STAT_CHANNELS: 4
+    HIDDEN_DIM: 64
+    INIT_ALPHA: 0.001
+    ALPHA_MAX: 0.020
+    GATE_BIAS: -5.0
+    EDGE_PROB_POWER: 2.0
+    USE_EVENT_RELIABILITY: True
+    RELIABILITY_FLOOR: 0.10
+    RELIABILITY_THRESHOLD: 0.05
+    EVENT_EDGE_THRESHOLD: 0.20
+    CONFIDENCE_THRESHOLD: 0.65
+    MARGIN_THRESHOLD: 0.25
+    ENTROPY_THRESHOLD: 0.55
+    REQUIRE_BOUNDARY: True
+    BOUNDARY_RADIUS: 3
+    GATE_BCE_WEIGHT: 0.10
+    GATE_POSITIVE_WEIGHT: 4.0
+    GATE_NEGATIVE_WEIGHT: 1.0
+    GATE_SUPERVISION_DETACH: True
+    LOG_STATS: True
+INPUT:
+  EVENT:
+    EDGE_WINDOW_RADII_MS: [25, 50, 100]
+    BOUNDARY_RADII: [3, 5]
+    DROPOUT_PROB: 0.0
+    BIN_DROPOUT_PROB: 0.0
+OUTPUT_DIR: "work_dirs/workshop_dsec19_swinl_event_adapter_headonly_from_cityscapes"

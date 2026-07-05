@@ -1,0 +1,11 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp18A_EventBoundaryMinDynamic.yaml
+MODEL:
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp19B: same strict candidate mask as Exp18A, with a stronger final
+    # residual scale. Use only if Exp18A is safe/flat and Exp19A still cannot
+    # make final logits move.
+    FINAL_GATE_SCALE: 8.0
+    LOSS_PRESERVE_KL_WEIGHT: 6.0
+    LOSS_GATE_SPARSE_WEIGHT: 0.003
+    LOSS_GATE_INVALID_WEIGHT: 0.012
+OUTPUT_DIR: "work_dirs/fullcosec-exp19b_event_boundary_min_scale8_bs8"

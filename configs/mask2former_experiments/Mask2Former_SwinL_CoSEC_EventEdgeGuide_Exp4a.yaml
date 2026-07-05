@@ -1,0 +1,36 @@
+_BASE_: Mask2Former_SwinL_CoSEC_EventEdgeSemantic_Exp3a.yaml
+MODEL:
+  WEIGHTS: "work_dirs/exp3a_event_edge_semantic_pretrain_from_day65_bs48_w0/model_0000191.pth"
+  EVENT_EDGE:
+    ENABLED: True
+    TRAIN_ONLY_EDGE: False
+    BCE_WEIGHT: 0.5
+    DICE_WEIGHT: 0.5
+  EVENT_EDGE_GUIDE:
+    ENABLED: True
+    STAGE: "res2"
+    INIT_ALPHA: 0.05
+    GATE_BIAS: -2.0
+    EDGE_PROB_POWER: 1.0
+    USE_EVENT_RELIABILITY: True
+    RELIABILITY_FLOOR: 0.25
+    LOW_LIGHT_ENABLED: True
+    LOW_LIGHT_GAIN: 1.0
+    LOW_LIGHT_LUMA_THRESHOLD: 0.35
+    LOW_LIGHT_CONTRAST_THRESHOLD: 0.08
+    GATE_SPARSITY_WEIGHT: 0.0
+    NON_BOUNDARY_GATE_WEIGHT: 0.05
+    LOG_STATS: True
+    TRAIN_ONLY_GUIDE: True
+    TRAIN_EDGE_HEAD: True
+SOLVER:
+  IMS_PER_BATCH: 24
+  BASE_LR: 0.00005
+TRAIN:
+  EPOCHS: 4
+  NUM_TRAIN_SAMPLES: 2264
+  EVAL_EVERY_EPOCH: True
+  CHECKPOINT_EVERY_EPOCH: True
+DATALOADER:
+  NUM_WORKERS: 0
+OUTPUT_DIR: "work_dirs/exp4a_event_edge_guided_res2_from_exp3a191_bs24_w0"

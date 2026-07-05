@@ -1,0 +1,17 @@
+_BASE_: Mask2Former_SwinL_CoSEC_FullCoSEC_Exp20B_EventBoundaryGateSupervisedRelaxed.yaml
+MODEL:
+  DAY_EVENT_BOUNDARY_REFINER:
+    # Exp21A: Exp20 shows candidate logits can reduce CE inside the selected
+    # event/RGB-boundary region, but final logits only inherit about 5% of that
+    # gain because alpha * effective_gate is too small. Keep the same candidate
+    # region and make the final residual large enough to matter.
+    INIT_ALPHA: 0.250
+    GATE_BIAS: -2.0
+    FINAL_GATE_SCALE: 8.0
+    LOSS_REPAIR_GATE_BCE_WEIGHT: 0.08
+    REPAIR_GATE_POSITIVE_WEIGHT: 10.0
+    REPAIR_GATE_NEGATIVE_WEIGHT: 1.0
+    LOSS_PRESERVE_KL_WEIGHT: 8.0
+    LOSS_GATE_SPARSE_WEIGHT: 0.003
+    LOSS_GATE_INVALID_WEIGHT: 0.018
+OUTPUT_DIR: "work_dirs/fullcosec-exp21a_event_boundary_gate_alpha025_bs8"

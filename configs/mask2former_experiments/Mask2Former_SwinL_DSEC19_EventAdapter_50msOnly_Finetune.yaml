@@ -1,0 +1,11 @@
+_BASE_: ./Mask2Former_SwinL_DSEC19_EventAdapter_Finetune.yaml
+MODEL:
+  EARLY_EVENT_EDGE_ADAPTER:
+    IN_CHANNELS: 3
+INPUT:
+  EVENT:
+    EDGE_WINDOW_RADII_MS: [50]
+    BOUNDARY_RADII: [3, 5]
+    DROPOUT_PROB: 0.0
+    BIN_DROPOUT_PROB: 0.0
+OUTPUT_DIR: "work_dirs/workshop_dsec19_swinl_event_adapter_50ms_only_from_cityscapes"
