@@ -1,0 +1,37 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Native build artifacts
+*.so
+*.o
+*.egg
+*.egg-info/
+build/
+dist/
+.ninja_deps
+.ninja_log
+
+# Local environments
+.venv/
+venv/
+env/
+.conda/
+
+# Large local data / generated outputs / checkpoints
+data/*
+!data/README.md
+outputs/*
+!outputs/README.md
+artifacts/*
+!artifacts/README.md
+checkpoints/*
+!checkpoints/README.md
+submit/*.zip
+!submit/README.md
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
