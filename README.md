@@ -14,30 +14,18 @@ RGB images may suffer from severe illumination shift under low-light or exposure
 - Supports RGB, event, and RGB-event fusion settings.
 - Checkpoints, datasets, generated outputs, and submission archives are not stored in Git.
 
-## Repository Structure
+## Repository Layout
 
-```text
-EventShift/
-|-- configs/
-|   |-- eventshift/       # Base configs, model variants, and rebuild recipes
-|   |-- mask2former/      # Final Mask2Former backend configs
-|   |-- segformer/        # Final SegFormer/MMSeg backend configs
-|   |-- maskdino/         # MaskDINO backend configs
-|   `-- mmseg/            # MMSeg training configs
-|-- eventshift/           # Core Python package and config/backend helpers
-|-- scripts/              # Thin user-facing shell entry points
-|-- tools/                # Training, inference, export, rebuild, and post-processing tools
-|-- third_party/          # Required third-party source code
-|-- docs/                 # Notes and additional documentation
-|-- metadata/             # Original notes, manifests, and provenance
-|-- data/                 # Placeholder for local datasets
-|-- checkpoints/          # Placeholder for local checkpoints
-|-- outputs/              # Placeholder for generated predictions
-|-- submit/               # Placeholder for local submission archives
-|-- requirements.txt
-|-- environment.yml
-`-- README.md
-```
+| Path | What belongs there |
+| --- | --- |
+| `configs/eventshift/` | Composable base, dataset, model, variant, and rebuild recipe configs. |
+| `configs/mask2former/`, `configs/segformer/`, `configs/mmseg/` | Backend configs used by the final Mask2Former and SegFormer/MMSeg runs. |
+| `eventshift/` | Lightweight package code for config composition and backend selection. |
+| `scripts/` | Thin user-facing entry points for training, inference, evaluation, data setup, and 0.4111 rebuild. |
+| `tools/` | Training adapters, exporters, rebuild logic, dataset preparation, diagnostics, and post-processing utilities. |
+| `third_party/` | Vendored source/subsets required by the legacy Mask2Former, Detectron2, and MMSegmentation execution paths. |
+| `docs/` | Reproducibility notes, dataset preparation, environment setup, and historical experiment notes. |
+| `data/`, `checkpoints/`, `outputs/`, `submit/`, `work_dirs/` | Local-only placeholders for datasets, checkpoints, predictions, submissions, and generated manifests/caches. |
 
 Historical one-off shell scripts are preserved under `scripts/archive/` and `tools/rebuild/archive/`. The recommended public entry points are `scripts/infer.sh`, `scripts/train.sh`, `scripts/eval.sh`, `scripts/prepare_data.sh`, and `scripts/rebuild_04111.sh`.
 
@@ -78,6 +66,18 @@ cd third_party/Mask2Former/mask2former/modeling/pixel_decoder/ops
 sh make.sh
 cd -
 ```
+
+## Third-Party Code
+
+EventShift keeps the runtime-critical third-party source under `third_party/` so the challenge pipeline can be rebuilt without relying on moving external checkouts. Only the pieces used by the current training/inference paths are documented here.
+
+| Vendored path | Upstream project | Used for | License / citation |
+| --- | --- | --- | --- |
+| `third_party/Mask2Former/` | [facebookresearch/Mask2Former](https://github.com/facebookresearch/Mask2Former) | Mask2Former Swin-L configs, trainer base class, semantic dataset mapper, TTA wrapper, and pixel decoder ops. | Mostly MIT; upstream notes also mention Swin Transformer MIT and Deformable DETR Apache-2.0 portions. Cite Mask2Former and MaskFormer. |
+| `third_party/detectron2/` | [facebookresearch/detectron2](https://github.com/facebookresearch/detectron2) | Detectron2 config, data catalog, training loop, checkpointing, evaluation, and project utilities used by the Mask2Former path. | Apache-2.0. Cite Detectron2. |
+| `third_party/mmsegmentation/` | [open-mmlab/mmsegmentation](https://github.com/open-mmlab/mmsegmentation) | Source subset for `mmseg`, `tools/train.py`, and `tools/test.py` used by SegFormer/MMSeg inference and training utilities. | Apache-2.0 upstream. Cite MMSegmentation and SegFormer. |
+
+The vendored directories are source-only; compiled artifacts are intentionally omitted. Rebuild native extensions in the target environment when needed. See `third_party/README.md` for the shorter provenance table and install commands.
 
 ## Config Layout
 
@@ -233,10 +233,64 @@ This repository contains cleaned and reorganized code for reproducibility. Some 
 
 For the 0.4111 rebuild workflow, see `docs/rebuild_04111_from_checkpoints.md`.
 
+## Citation
+
+The EventShift technical report citation will be added after the ECCV 2026 EBMV Workshop Challenge report is finalized. If you use this repository before then, please also cite the upstream projects used by the implementation.
+
+<details>
+<summary>Third-party BibTeX</summary>
+
+```bibtex
+@inproceedings{cheng2021mask2former,
+  title={Masked-attention Mask Transformer for Universal Image Segmentation},
+  author={Bowen Cheng and Ishan Misra and Alexander G. Schwing and Alexander Kirillov and Rohit Girdhar},
+  journal={CVPR},
+  year={2022}
+}
+
+@inproceedings{cheng2021maskformer,
+  title={Per-Pixel Classification is Not All You Need for Semantic Segmentation},
+  author={Bowen Cheng and Alexander G. Schwing and Alexander Kirillov},
+  journal={NeurIPS},
+  year={2021}
+}
+
+@misc{wu2019detectron2,
+  author={Yuxin Wu and Alexander Kirillov and Francisco Massa and Wan-Yen Lo and Ross Girshick},
+  title={Detectron2},
+  howpublished={\url{https://github.com/facebookresearch/detectron2}},
+  year={2019}
+}
+
+@misc{mmseg2020,
+  title={{MMSegmentation}: OpenMMLab Semantic Segmentation Toolbox and Benchmark},
+  author={MMSegmentation Contributors},
+  howpublished={\url{https://github.com/open-mmlab/mmsegmentation}},
+  year={2020}
+}
+
+@inproceedings{xie2021segformer,
+  title={SegFormer: Simple and Efficient Design for Semantic Segmentation with Transformers},
+  author={Xie, Enze and Wang, Wenhai and Yu, Zhiding and Anandkumar, Anima and Alvarez, Jose M. and Luo, Ping},
+  booktitle={Advances in Neural Information Processing Systems},
+  year={2021}
+}
+```
+
+</details>
+
 ## License
 
-This project is released under the MIT License.
+EventShift-specific code is released under the MIT License; see `LICENSE`. Third-party source under `third_party/` keeps its upstream license terms:
+
+| Component | License note |
+| --- | --- |
+| Mask2Former | Mostly MIT, with separate MIT/Apache-2.0 portions noted by upstream. |
+| Detectron2 | Apache-2.0 upstream. |
+| MMSegmentation | Apache-2.0 upstream. |
+
+Datasets, checkpoints, and pretrained weights are governed by their own upstream or challenge terms and are not redistributed in this repository.
 
 ## Acknowledgements
 
-This repository builds upon several open-source semantic segmentation and event-based vision codebases. We thank the authors of the related projects for making their code publicly available.
+This repository builds on Mask2Former, Detectron2, MMSegmentation, SegFormer, DSEC/DSEC-Semantic, ACDC, and the CoSEC challenge resources. We thank the authors and maintainers for making their code and datasets available to the research community.
