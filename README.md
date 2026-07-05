@@ -1,153 +1,205 @@
 # EventShift
 
-EventShift is a cleaned, submission-friendly restructuring of the 0411 CoSEC /
-DSEC event-assisted semantic segmentation codebase.
+**EventShift: Event-Guided Illumination-Robust Semantic Segmentation for CoSEC**
 
-This repository is not just a wrapper around the old bundle. The original 0411
-scripts have been reorganized by purpose:
+EventShift is our solution for the **CoSEC Semantic Segmentation Track** of the **ECCV 2026 EBMV Workshop Challenge**.
+The method targets semantic segmentation under challenging illumination conditions by using event streams as complementary cues to RGB images.
 
-```text
-configs/                  Training and inference configs
-    eventshift/           Three readable entry configs: eventshift, RGB baseline, event-only
-    mask2former/          0411 final/rebuild Mask2Former configs
-    mask2former_experiments/
-                           Historical Swin-L event/RGB experiment configs
-    segformer/            0411 SegFormer configs
-    mmseg/                MMSeg configs
-    maskdino/             MaskDINO configs
+RGB images may suffer from severe illumination shift under low-light or exposure-changing scenes. Event signals provide additional motion and boundary information that is less dependent on absolute image brightness. EventShift uses these event cues to improve semantic segmentation robustness under difficult lighting conditions.
 
-eventshift/               Lightweight reusable Python package
-scripts/                  User-facing shell entry points
-tools/
-    training/             Training backends and calibration trainers
-    export/               Prediction export / TTA scripts
-    rebuild/              0411 rebuild runners
-    postprocess/          Submission composition, repair, routing, voting
-    diagnostics/          Event and routing analysis tools
-    data/                 Dataset split / conversion / cache builders
-    analysis/             Summaries and run analysis
-    launchers/            Historical experiment launch scripts
-    cache/                Feature and prediction cache utilities
-    misc/                 Less frequently used utilities
-    *.py                  Shared compatibility modules used by older scripts
-third_party/              Source-only copies of Mask2Former, detectron2, mmsegmentation
-metadata/                 Original 0411 notes/manifests/provenance
-checkpoints/              Local checkpoint storage, ignored by git
-data/                     Local data placeholder, ignored by git
-outputs/                  Local outputs, ignored by git
-docs/                     Method/rebuild notes
-```
+## Highlights
 
-## What Is Included
+- Event-guided semantic segmentation for CoSEC.
+- Designed for illumination-robust RGB-event perception.
+- Supports RGB, event, and RGB-event fusion settings.
+- Includes cleaned configuration files, inference scripts, and submission utilities.
+- Checkpoints and large datasets are not stored in this repository.
 
-Included in git:
+## Repository Structure
 
 ```text
-source code
-configs
-scripts
-docs
-third_party source files
-metadata/manifests
+EventShift/
+|-- configs/              # Training and inference configs
+|-- eventshift/           # Core Python package
+|-- scripts/              # User-facing shell scripts
+|-- tools/                # Training, inference, export, and post-processing tools
+|-- third_party/          # Required third-party source code
+|-- docs/                 # Notes and additional documentation
+|-- metadata/             # Original notes, manifests, and provenance
+|-- data/                 # Placeholder for local datasets
+|-- checkpoints/          # Placeholder for local checkpoints
+|-- outputs/              # Placeholder for generated predictions
+|-- submit/               # Placeholder for local submission archives
+|-- requirements.txt
+|-- environment.yml
+`-- README.md
 ```
 
-Not included in git:
-
-```text
-raw datasets
-generated outputs
-submission zips
-compiled artifacts: *.so, *.o, build/, dist/, __pycache__/
-```
-
-`checkpoints/` is also ignored by git. For local reproduction, this workspace may
-contain copied checkpoint files there, but they are not part of the source
-submission.
+Large files such as datasets, checkpoints, generated outputs, and submission archives are ignored by Git.
 
 ## Environment
 
-The rebuild work used one conda environment named `ebmv_seg` for both
-Mask2Former/Swin-L and SegFormer/MMSeg inference.
+We recommend using the provided conda environment file:
 
 ```bash
-cd /code/ebmv/EventShift
 conda env create -f environment.yml
 conda activate ebmv_seg
+```
+
+Install additional third-party dependencies if needed:
+
+```bash
 pip install --no-build-isolation -e third_party/detectron2
 pip install -r third_party/Mask2Former/requirements.txt
 ```
 
-The verified local stack was Python 3.10.20, PyTorch 2.6.0+cu124,
-Torchvision 0.21.0+cu124, Detectron2 0.6, MMSegmentation 1.2.2,
-MMEngine 0.10.7, and mmcv-lite 2.1.0. See
-`docs/ebmv_seg_environment.md` for exact setup, validation commands, and 0411
-rebuild notes.
+The verified environment used for our experiments includes:
 
-If the target machine requires Mask2Former native ops, rebuild them locally:
+```text
+Python 3.10
+PyTorch 2.6.0 + CUDA 12.4
+Torchvision 0.21.0 + CUDA 12.4
+Detectron2 0.6
+MMSegmentation 1.2.2
+MMEngine 0.10.7
+MMCV-lite 2.1.0
+```
+
+See `docs/ebmv_seg_environment.md` for exact setup notes, validation commands, and troubleshooting.
+
+If native Mask2Former operators are required, rebuild them locally:
 
 ```bash
 cd third_party/Mask2Former/mask2former/modeling/pixel_decoder/ops
 sh make.sh
-cd /code/ebmv/EventShift
+cd -
 ```
 
-## Data Paths
+## Dataset Preparation
 
-Raw datasets are expected outside the submitted repo. Point the code to them with
-environment variables:
-
-```bash
-export BRENET_ROOT=/path/to/BRENet
-export COSEC_ROOT=/path/to/cosec
-export DSEC_ROOT=/path/to/dsec
-export ACDC_ROOT=/path/to/acdc
-export TEST_ROOT=/path/to/test
-```
-
-The CoSEC event manifest expected by the event dataset utilities is:
+Raw datasets are expected to be placed outside the repository. User-facing scripts accept dataset locations as command-line arguments:
 
 ```text
-$BRENET_ROOT/projects/brenet_cosec/manifests/cosec_train_bidir_50ms.json
+--cosec-root       CoSEC training root containing Day_* and Night_* sequences
+--brenet-root      BRENet root containing CoSEC event assets
+--cosec-manifest   CoSEC event manifest JSON
+--dsec-root        DSEC dataset root
+--acdc-root        ACDC dataset root
+--test-root        CoSEC test root for inference and submission export
 ```
 
-## Common Commands
+For CoSEC event-based training or inference, prepare the event manifest before running the scripts. The default manifest location is:
 
-Dry-run an EventShift training command:
+```text
+/path/to/BRENet/projects/brenet_cosec/manifests/cosec_train_bidir_50ms.json
+```
+
+The same paths can also be provided through environment variables (`COSEC_ROOT`, `BRENET_ROOT`, `EVENTSHIFT_COSEC_MANIFEST`, `DSEC_ROOT`, `ACDC_ROOT`, and `TEST_ROOT`) when that is more convenient.
+
+## Inference
+
+Print the inference command with:
 
 ```bash
-bash scripts/train.sh configs/eventshift/cosec_eventshift.yaml
+bash scripts/infer.sh configs/eventshift/cosec_eventshift.yaml \
+  --weights checkpoints/model.pth \
+  --test-root /path/to/test \
+  --cosec-root /path/to/cosec/train \
+  --brenet-root /path/to/BRENet \
+  --cosec-manifest /path/to/cosec_train_bidir_50ms.json
 ```
 
-Run training after the environment and data paths are ready:
+Run inference by adding `--execute`:
 
 ```bash
-bash scripts/train.sh configs/eventshift/cosec_eventshift.yaml --execute
+bash scripts/infer.sh configs/eventshift/cosec_eventshift.yaml \
+  --weights checkpoints/model.pth \
+  --test-root /path/to/test \
+  --cosec-root /path/to/cosec/train \
+  --brenet-root /path/to/BRENet \
+  --cosec-manifest /path/to/cosec_train_bidir_50ms.json \
+  --execute
 ```
 
-Run inference dry-run:
+Generated predictions will be saved under the output directory specified in the config or script.
+
+## Rebuild 0.4111
+
+The 0.4111 b75 submission can be rebuilt through one user-facing shell entry point:
 
 ```bash
-bash scripts/infer.sh configs/eventshift/cosec_eventshift.yaml --weights checkpoints/model.pth --test-root /path/to/test
+bash scripts/rebuild_04111.sh \
+  --test-root /path/to/test \
+  --conda /root/miniconda3/bin/conda \
+  --m2f-env ebmv_seg \
+  --mmseg-env ebmv_seg \
+  --device cuda:0
 ```
 
-Rebuild the historical 0411 pipeline, if the required local checkpoints and
-fixed artifacts are available:
+The runner regenerates two Mask2Former exports and one SegFormer export, then applies the bundled post-processing steps. Each model export uses a tqdm progress bar labeled with the model name.
+
+For a quick argument and path check without running inference, use:
 
 ```bash
-TEST_ROOT=/path/to/test bash scripts/rebuild_04111.sh
+bash scripts/rebuild_04111.sh \
+  --test-root /path/to/test \
+  --conda /root/miniconda3/bin/conda \
+  --m2f-env ebmv_seg \
+  --mmseg-env ebmv_seg \
+  --smoke-limit 0 \
+  --skip-inference
 ```
 
-See `docs/rebuild_04111_from_checkpoints.md` for the full 0411 rebuild notes.
+## Training
+
+To dry-run the training command:
+
+```bash
+bash scripts/train.sh configs/eventshift/cosec_eventshift.yaml \
+  --cosec-root /path/to/cosec/train \
+  --brenet-root /path/to/BRENet \
+  --cosec-manifest /path/to/cosec_train_bidir_50ms.json
+```
+
+To launch training:
+
+```bash
+bash scripts/train.sh configs/eventshift/cosec_eventshift.yaml \
+  --cosec-root /path/to/cosec/train \
+  --brenet-root /path/to/BRENet \
+  --cosec-manifest /path/to/cosec_train_bidir_50ms.json \
+  --execute
+```
 
 ## Checkpoints
 
-A local copy of checkpoints can be placed under `checkpoints/` for reproduction.
-This directory is ignored by git via `.gitignore` so weights do not enter the
-source submission.
+Model checkpoints are not included in this repository. Please place downloaded checkpoints under:
+
+```text
+checkpoints/
+```
+
+Example:
+
+```text
+checkpoints/
+`-- eventshift_cosec.pth
+```
+
+## Results
+
+The final challenge results and technical report details will be updated after the ECCV 2026 EBMV Workshop Challenge report is finalized.
 
 ## Notes
 
-- Event usage details are in `docs/event_usage_swinl_segformer.md`.
-- Original file manifests and SHA notes are in `metadata/`.
-- Historical launch scripts remain under `tools/launchers/`; they preserve the
-  experiment history and may need environment-specific path adjustments.
+This repository contains cleaned and reorganized code for reproducibility. Some historical experiment scripts are preserved under `tools/` and `docs/` for reference, but the recommended entry points are the scripts under `scripts/`.
+
+For the historical 0411 rebuild workflow, see `docs/rebuild_04111_from_checkpoints.md`.
+
+## License
+
+This project is released under the MIT License.
+
+## Acknowledgements
+
+This repository builds upon several open-source semantic segmentation and event-based vision codebases. We thank the authors of the related projects for making their code publicly available.

@@ -1,13 +1,20 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 
 
 SWIN_L_ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
-SPLIT_DIR = WORKSPACE_ROOT / "BRENet" / "projects" / "brenet_cosec" / "splits"
+BRENET_ROOT = Path(os.environ.get("BRENET_ROOT", WORKSPACE_ROOT / "BRENet")).expanduser()
+SPLIT_DIR = Path(
+    os.environ.get(
+        "EVENTSHIFT_COSEC_SPLIT_DIR",
+        BRENET_ROOT / "projects" / "brenet_cosec" / "splits",
+    )
+).expanduser()
 TRAIN_SPLIT_FILE = SPLIT_DIR / "train_seq_holdout_305.txt"
 VAL_SPLIT_FILE = SPLIT_DIR / "val_seq_holdout_305.txt"
-DEFAULT_COSEC_TRAIN_ROOT = SWIN_L_ROOT / "data" / "train"
+DEFAULT_COSEC_TRAIN_ROOT = Path(os.environ.get("COSEC_ROOT", SWIN_L_ROOT / "data" / "train")).expanduser()
 DEFAULT_KFOLD_COUNT = 3
 
 
@@ -274,7 +281,7 @@ def split_contains_sample(seq_name, frame_id, split, root=DEFAULT_COSEC_TRAIN_RO
     return _group_matches_requested_split(sample_group, requested_split)
 
 
-def iter_cosec_samples(root="data/train", split="train"):
+def iter_cosec_samples(root=DEFAULT_COSEC_TRAIN_ROOT, split="train"):
     root = Path(root)
     for seq_dir in sorted(p for p in root.iterdir() if p.is_dir()):
         if not seq_dir.name.startswith(("Day_", "Night_")):

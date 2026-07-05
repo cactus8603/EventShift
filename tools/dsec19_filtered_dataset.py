@@ -1,4 +1,5 @@
 import json
+import os
 from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
@@ -6,15 +7,14 @@ from pathlib import Path
 from cosec_finetune_splits import WORKSPACE_ROOT
 
 
-DSEC_ROOT = WORKSPACE_ROOT / "swin_l" / "data" / "dsec"
-DSEC_FILTERED_630_MANIFEST = (
-    WORKSPACE_ROOT
-    / "BRENet"
-    / "projects"
-    / "brenet_cosec"
-    / "manifests"
-    / "dsec19_filtered_medium_more_630.json"
-)
+BRENET_ROOT = Path(os.environ.get("BRENET_ROOT", WORKSPACE_ROOT / "BRENet")).expanduser()
+DSEC_ROOT = Path(os.environ.get("DSEC_ROOT", WORKSPACE_ROOT / "swin_l" / "data" / "dsec")).expanduser()
+DSEC_FILTERED_630_MANIFEST = Path(
+    os.environ.get(
+        "DSEC_FILTERED_630_MANIFEST",
+        BRENET_ROOT / "projects" / "brenet_cosec" / "manifests" / "dsec19_filtered_medium_more_630.json",
+    )
+).expanduser()
 DSEC_DEFAULT_VAL_SEQUENCES = ("zurich_city_06_a", "zurich_city_07_a", "zurich_city_08_a")
 DSEC_DEFAULT_EVENT_WINDOW_US = 50_000
 

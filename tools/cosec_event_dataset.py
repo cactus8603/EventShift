@@ -1,5 +1,6 @@
 import json
 import math
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -15,8 +16,13 @@ except ImportError:
 
 
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
-BRENET_ROOT = WORKSPACE_ROOT / "BRENet"
-MANIFEST_PATH = BRENET_ROOT / "projects" / "brenet_cosec" / "manifests" / "cosec_train_bidir_50ms.json"
+BRENET_ROOT = Path(os.environ.get("BRENET_ROOT", WORKSPACE_ROOT / "BRENet")).expanduser()
+MANIFEST_PATH = Path(
+    os.environ.get(
+        "EVENTSHIFT_COSEC_MANIFEST",
+        BRENET_ROOT / "projects" / "brenet_cosec" / "manifests" / "cosec_train_bidir_50ms.json",
+    )
+).expanduser()
 
 
 @lru_cache(maxsize=1)

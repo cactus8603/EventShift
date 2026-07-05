@@ -6,12 +6,12 @@ Mask2Former/Swin-L and SegFormer/MMSeg inference.
 The successful commands used the environment like this:
 
 ```bash
-CONDA=/root/miniconda3/bin/conda \
-M2F_ENV=ebmv_seg \
-MMSEG_ENV=ebmv_seg \
-TEST_ROOT=/code/ebmv/portable_submission_bundle_v3_20260629/test \
-DEVICE=cuda:0 \
-bash scripts/rebuild_04111.sh
+bash scripts/rebuild_04111.sh \
+  --test-root /code/ebmv/portable_submission_bundle_v3_20260629/test \
+  --conda /root/miniconda3/bin/conda \
+  --m2f-env ebmv_seg \
+  --mmseg-env ebmv_seg \
+  --device cuda:0
 ```
 
 ## Verified Local Environment
@@ -104,7 +104,7 @@ conda run -n ebmv_seg python -c "import torch, cv2, yaml, timm, detectron2, mmse
 Expected output should include CUDA availability on a GPU machine and versions
 matching the list above.
 
-## Rebuild 0.411111 Submission
+## Rebuild 0.4111 Submission
 
 Required local inputs:
 
@@ -118,12 +118,12 @@ Run:
 
 ```bash
 cd /code/ebmv/EventShift
-CONDA=/root/miniconda3/bin/conda \
-M2F_ENV=ebmv_seg \
-MMSEG_ENV=ebmv_seg \
-TEST_ROOT=/path/to/test \
-DEVICE=cuda:0 \
-bash scripts/rebuild_04111.sh
+bash scripts/rebuild_04111.sh \
+  --test-root /path/to/test \
+  --conda /root/miniconda3/bin/conda \
+  --m2f-env ebmv_seg \
+  --mmseg-env ebmv_seg \
+  --device cuda:0
 ```
 
 The final generated zip is written under:
@@ -158,5 +158,5 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8
 This reduces CUDA/PyTorch boundary-pixel drift but may be slower. To disable it:
 
 ```bash
-EVENTSHIFT_DETERMINISTIC=0 TEST_ROOT=/path/to/test bash scripts/rebuild_04111.sh
+bash scripts/rebuild_04111.sh --test-root /path/to/test --non-deterministic
 ```

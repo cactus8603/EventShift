@@ -201,7 +201,8 @@ def should_skip_code_backup():
 
 def load_cosec_dicts(split):
     records = []
-    for idx, (seq_name, frame_id, img_path, label_path) in enumerate(iter_cosec_samples(ROOT / "data" / "train", split)):
+    cosec_root = Path(os.environ.get("COSEC_ROOT", ROOT / "data" / "train")).expanduser()
+    for idx, (seq_name, frame_id, img_path, label_path) in enumerate(iter_cosec_samples(cosec_root, split)):
         records.append(
             {
                 "file_name": str(img_path),

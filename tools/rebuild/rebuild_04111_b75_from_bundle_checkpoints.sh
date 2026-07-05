@@ -4,22 +4,135 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUNDLE_DIR="${EVENTSHIFT_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 
+usage() {
+  cat <<USAGE
+Usage: bash scripts/rebuild_04111.sh --test-root /path/to/test [options]
+
+Rebuild the 0.4111 b75 submission from bundled configs, checkpoints, and artifacts.
+
+Required:
+  --test-root PATH          CoSEC test root containing sequence/img_co_left folders.
+
+Common options:
+  --out-root PATH           Output root. Defaults to outputs/rebuild_04111_b75_from_checkpoints_<timestamp>.
+  --conda PATH              Conda executable. Defaults to CONDA or /home/u1621738/miniconda3/bin/conda.
+  --m2f-env NAME            Conda env for Mask2Former exports. Defaults to M2F_ENV or mask2former.
+  --mmseg-env NAME          Conda env for MMSeg/SegFormer export. Defaults to MMSEG_ENV or mmseg.
+  --device DEVICE           Torch device. Defaults to DEVICE or cuda:0.
+  --smoke-limit N           Export only the first N frames per model and stop before composition.
+  --skip-inference          Reuse existing raw masks under --out-root.
+  --run-inference           Run model inference. This is the default.
+  --deterministic           Enable deterministic torch settings. This is the default.
+  --non-deterministic       Disable deterministic torch settings.
+  -h, --help                Show this help.
+
+Environment-variable fallbacks remain supported for the same names:
+  TEST_ROOT, OUT_ROOT, CONDA, M2F_ENV, MMSEG_ENV, DEVICE, SMOKE_LIMIT,
+  RUN_INFERENCE, EVENTSHIFT_DETERMINISTIC.
+USAGE
+}
+
+need_value() {
+  local flag="$1"
+  if [[ $# -lt 2 || -z "${2:-}" ]]; then
+    echo "${flag} requires a value." >&2
+    exit 2
+  fi
+}
+
 CONDA="${CONDA:-/home/u1621738/miniconda3/bin/conda}"
 M2F_ENV="${M2F_ENV:-mask2former}"
 MMSEG_ENV="${MMSEG_ENV:-mmseg}"
 DEVICE="${DEVICE:-cuda:0}"
 TEST_ROOT="${TEST_ROOT:-}"
+OUT_ROOT="${OUT_ROOT:-}"
 SMOKE_LIMIT="${SMOKE_LIMIT:-}"
 RUN_INFERENCE="${RUN_INFERENCE:-1}"
 EVENTSHIFT_DETERMINISTIC="${EVENTSHIFT_DETERMINISTIC:-1}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --test-root)
+      need_value "$@"
+      TEST_ROOT="$2"
+      shift 2
+      ;;
+    --out-root)
+      need_value "$@"
+      OUT_ROOT="$2"
+      shift 2
+      ;;
+    --conda)
+      need_value "$@"
+      CONDA="$2"
+      shift 2
+      ;;
+    --m2f-env)
+      need_value "$@"
+      M2F_ENV="$2"
+      shift 2
+      ;;
+    --mmseg-env)
+      need_value "$@"
+      MMSEG_ENV="$2"
+      shift 2
+      ;;
+    --device)
+      need_value "$@"
+      DEVICE="$2"
+      shift 2
+      ;;
+    --smoke-limit)
+      need_value "$@"
+      SMOKE_LIMIT="$2"
+      shift 2
+      ;;
+    --skip-inference)
+      RUN_INFERENCE=0
+      shift
+      ;;
+    --run-inference)
+      RUN_INFERENCE=1
+      shift
+      ;;
+    --deterministic)
+      EVENTSHIFT_DETERMINISTIC=1
+      shift
+      ;;
+    --non-deterministic)
+      EVENTSHIFT_DETERMINISTIC=0
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ $# -gt 0 ]]; then
+  echo "Unexpected positional arguments: $*" >&2
+  usage >&2
+  exit 2
+fi
+
 export EVENTSHIFT_DETERMINISTIC
 if [[ "${EVENTSHIFT_DETERMINISTIC}" != "0" ]]; then
   export CUBLAS_WORKSPACE_CONFIG="${CUBLAS_WORKSPACE_CONFIG:-:4096:8}"
 fi
 
 if [[ -z "${TEST_ROOT}" ]]; then
-  echo "TEST_ROOT is required. Example:" >&2
-  echo "  TEST_ROOT=/path/to/test bash scripts/rebuild_04111.sh" >&2
+  echo "--test-root is required. Example:" >&2
+  echo "  bash scripts/rebuild_04111.sh --test-root /path/to/test" >&2
   exit 1
 fi
 
@@ -137,6 +250,7 @@ run_m2f_export() {
     --test-root "${TEST_ROOT}" \
     --out-dir "${out_dir}" \
     --device "${DEVICE}" \
+    --progress-desc "${name}" \
     --sequences "$@" \
     --skip-existing \
     "${limit_args[@]}" \
@@ -175,6 +289,7 @@ run_mmseg_export() {
     --test-root "${TEST_ROOT}" \
     --out-dir "${out_dir}" \
     --device "${DEVICE}" \
+    --progress-desc "${name}" \
     --sequences "$@" \
     --skip-existing \
     "${limit_args[@]}" \

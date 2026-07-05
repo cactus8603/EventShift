@@ -60,6 +60,7 @@ def parse_args():
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--progress-desc", default="Export mmseg masks")
     parser.add_argument(
         "--scale-specs",
         default="s512:512:1200,s624:624:1200,s768:768:1400,s1024:1024:1600",
@@ -236,7 +237,7 @@ def main():
         images = images[: int(args.limit)]
 
     counts = {"total": 0, "skipped": 0, "sequences": {}}
-    for seq_name, img_path in tqdm(images, desc="Export mmseg masks"):
+    for seq_name, img_path in tqdm(images, desc=args.progress_desc):
         dst_dir = out_dir / seq_name / "segment_co"
         dst_path = dst_dir / img_path.name
         if args.skip_existing and dst_path.exists():

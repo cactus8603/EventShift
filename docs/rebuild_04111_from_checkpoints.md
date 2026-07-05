@@ -28,18 +28,18 @@ See `docs/ebmv_seg_environment.md` for installation details.
 From this bundle directory:
 
 ```bash
-CONDA=/root/miniconda3/bin/conda \
-M2F_ENV=ebmv_seg \
-MMSEG_ENV=ebmv_seg \
-TEST_ROOT=/path/to/test \
-bash scripts/rebuild_04111.sh
+bash scripts/rebuild_04111.sh \
+  --test-root /path/to/test \
+  --conda /root/miniconda3/bin/conda \
+  --m2f-env ebmv_seg \
+  --mmseg-env ebmv_seg
 ```
 
 Example on the original machine:
 
 ```bash
-TEST_ROOT=/work/u1621738/ebmv_eccv/eccv_segment/swin_l/data/test \
-bash scripts/rebuild_04111.sh
+bash scripts/rebuild_04111.sh \
+  --test-root /work/u1621738/ebmv_eccv/eccv_segment/swin_l/data/test
 ```
 
 All pipeline inputs except `TEST_ROOT`, conda environments, and installed Python packages are inside this bundle:
@@ -160,12 +160,12 @@ mmcv-lite 2.1.0
 The runner defaults are historical; override them on this cleaned repository:
 
 ```bash
-CONDA=/root/miniconda3/bin/conda \
-M2F_ENV=ebmv_seg \
-MMSEG_ENV=ebmv_seg \
-DEVICE=cuda:0 \
-TEST_ROOT=/path/to/test \
-bash scripts/rebuild_04111.sh
+bash scripts/rebuild_04111.sh \
+  --test-root /path/to/test \
+  --conda /root/miniconda3/bin/conda \
+  --m2f-env ebmv_seg \
+  --mmseg-env ebmv_seg \
+  --device cuda:0
 ```
 
 Detailed installation and validation commands are in
