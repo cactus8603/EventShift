@@ -4,14 +4,12 @@
 import argparse
 import csv
 import json
+import os
 import sys
 from pathlib import Path
 
 
-DEFAULT_REGISTRY = Path(
-    "/work/u1621738/ebmv_eccv/eccv_segment/"
-    "unified_cosec_acdc/classcover_v1/checkpoints/full_desc_cosec_acdc"
-)
+DEFAULT_REGISTRY = Path(os.environ.get("EVENTSHIFT_CHECKPOINT_REGISTRY", "checkpoints/full_desc_cosec_acdc"))
 
 MANIFEST_FIELDS = ("model", "stage", "domain", "status", "link", "source")
 SELECTED_FIELDS = (

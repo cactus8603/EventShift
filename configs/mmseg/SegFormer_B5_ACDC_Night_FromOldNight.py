@@ -1,9 +1,12 @@
-_base_ = "/work/u1621738/ebmv_eccv/mmsegmentation/configs/segformer/segformer_mit-b5_8xb1-160k_cityscapes-1024x1024.py"
+import os
+
+MMSEGMENTATION_ROOT = os.getenv("MMSEGMENTATION_ROOT", "third_party/mmsegmentation")
+_base_ = f"{MMSEGMENTATION_ROOT}/configs/segformer/segformer_mit-b5_8xb1-160k_cityscapes-1024x1024.py"
 
 crop_size = (512, 1024)
-data_root = "/work/u1621738/ebmv_eccv/MambaSeg/data/acdc"
+data_root = "./data/acdc"
 dataset_type = "CityscapesDataset"
-split_root = "/work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/mmseg/acdc_splits"
+split_root = "./work_dirs/mmseg/acdc_splits"
 
 model = dict(
     backbone=dict(init_cfg=None),
@@ -11,12 +14,9 @@ model = dict(
     test_cfg=dict(mode="slide", crop_size=crop_size, stride=(384, 768)),
 )
 
-load_from = (
-    "/work/u1621738/ebmv_eccv/MambaSeg/log/mmseg/"
-    "segformer_b5_cosec_daynight_finetune/best_night_mIoU_iter_8000.pth"
-)
+load_from = None
 work_dir = (
-    "/work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/mmseg/"
+    "./work_dirs/mmseg/"
     "segformer_b5_acdc_night_from_old_night_lr1e-5"
 )
 

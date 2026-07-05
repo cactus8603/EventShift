@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${ROOT:-/work/u1621738/ebmv_eccv/eccv_segment}"
-MAMBASEG_ROOT="${MAMBASEG_ROOT:-/work/u1621738/ebmv_eccv/MambaSeg}"
-MMSEG_ROOT="${MMSEG_ROOT:-/work/u1621738/ebmv_eccv/mmsegmentation}"
-CONDA="${CONDA:-/home/u1621738/miniconda3/bin/conda}"
+ROOT="${ROOT:-.}"
+MAMBASEG_ROOT="${MAMBASEG_ROOT:-.}"
+MMSEG_ROOT="${MMSEG_ROOT:-third_party/mmsegmentation}"
+CONDA="${CONDA:-conda}"
 GPU_ID="${GPU_ID:-0}"
 DRY_RUN="${DRY_RUN:-0}"
 MODELS="${MODELS:-mask2former,maskdino,segformer,brenet}"

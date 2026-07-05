@@ -26,7 +26,7 @@ if importlib.util.find_spec("detectron2") is None:
     sys.path.insert(0, str(ROOT / "third_party" / "detectron2"))
 
 DEFAULT_HDF5_PLUGIN_PATH = Path(
-    "/home/u1621738/miniconda3/envs/brenet_mask2former/lib/python3.8/site-packages/hdf5plugin/plugins"
+    "/path/to/hdf5plugin/plugins"
 )
 if "HDF5_PLUGIN_PATH" not in os.environ and DEFAULT_HDF5_PLUGIN_PATH.exists():
     os.environ["HDF5_PLUGIN_PATH"] = str(DEFAULT_HDF5_PLUGIN_PATH)

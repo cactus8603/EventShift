@@ -6,8 +6,8 @@ export EVENTSHIFT_ROOT="${EVENTSHIFT_ROOT:-${ROOT_DIR}}"
 export PYTHONPATH="${ROOT_DIR}:${PYTHONPATH:-}"
 
 ORIGINAL_ARGS=("$@")
-CONDA_BIN="${CONDA:-}"
-RUNNER_ENV="${M2F_ENV:-mask2former}"
+CONDA_BIN=""
+RUNNER_ENV="${CONDA_DEFAULT_ENV:-}"
 SHOW_HELP=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -41,19 +41,12 @@ if [[ -n "${PYTHON:-}" ]]; then
   exec "${PYTHON}" -m tools.rebuild.rebuild_04111 "${ORIGINAL_ARGS[@]}"
 fi
 
-if [[ "${SHOW_HELP}" -eq 0 ]]; then
-  if [[ -z "${CONDA_BIN}" ]]; then
-    if command -v conda >/dev/null 2>&1; then
-      CONDA_BIN="conda"
-    elif [[ -x /root/miniconda3/bin/conda ]]; then
-      CONDA_BIN="/root/miniconda3/bin/conda"
-    elif [[ -x /home/u1621738/miniconda3/bin/conda ]]; then
-      CONDA_BIN="/home/u1621738/miniconda3/bin/conda"
-    fi
-  fi
-  if [[ -n "${CONDA_BIN}" ]]; then
-    exec "${CONDA_BIN}" run --no-capture-output -n "${RUNNER_ENV}" python -m tools.rebuild.rebuild_04111 "${ORIGINAL_ARGS[@]}"
-  fi
+if [[ -n "${CONDA_BIN}" && -z "${RUNNER_ENV}" ]]; then
+  RUNNER_ENV="ebmv_seg"
+fi
+
+if [[ "${SHOW_HELP}" -eq 0 && -n "${CONDA_BIN}" && -n "${RUNNER_ENV}" ]]; then
+  exec "${CONDA_BIN}" run --no-capture-output -n "${RUNNER_ENV}" python -m tools.rebuild.rebuild_04111 "${ORIGINAL_ARGS[@]}"
 fi
 
 if command -v python >/dev/null 2>&1; then

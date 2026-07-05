@@ -37,15 +37,15 @@ from dsec19_filtered_dataset import load_dsec19_close180_dicts  # noqa: E402
 
 EXP_ROOT = ROOT / "experiments" / "segformer_b5_kfold3_cityscapes_dsec180"
 DATA_ROOT = EXP_ROOT / "data"
-COSEC_MMSEG_ROOT = Path("/work/u1621738/ebmv_eccv/MambaSeg/data/cosec_mmseg")
+COSEC_MMSEG_ROOT = Path("./data/cosec_mmseg")
 CITYSCAPES_PRETRAIN = (
-    "/work/u1621738/ebmv_eccv/mmsegmentation/pretrained_model/"
+    "third_party/mmsegmentation/pretrained_model/"
     "segformer_mit-b5_8x1_1024x1024_160k_cityscapes_20211206_072934-87a052ec.pth"
 )
-BASE_CONFIG = "/work/u1621738/ebmv_eccv/MambaSeg/configs/SegFormer_B5_CoSEC_DayNight_Finetune.py"
-MMSEG_ROOT = "/work/u1621738/ebmv_eccv/mmsegmentation"
-MAMBASEG_ROOT = "/work/u1621738/ebmv_eccv/MambaSeg"
-CONDA = "/home/u1621738/miniconda3/bin/conda"
+BASE_CONFIG = "./configs/SegFormer_B5_CoSEC_DayNight_Finetune.py"
+MMSEG_ROOT = "third_party/mmsegmentation"
+MAMBASEG_ROOT = "."
+CONDA = "conda"
 ENV_NAME = "mmseg"
 FOLDS = DEFAULT_KFOLD_COUNT
 DAY_EXTRA = 250

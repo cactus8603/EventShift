@@ -30,7 +30,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--repo-root",
         default=None,
-        help="eccv_segment repo root. Defaults to the parent of this script's swin_l directory.",
+        help="legacy bundle repo root. Defaults to the parent of this script directory.",
     )
     parser.add_argument(
         "--checks",

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/work/u1621738/ebmv_eccv/eccv_segment"
+ROOT="."
 SWIN_L_ROOT="${ROOT}/swin_l"
-CONDA="${CONDA:-/home/u1621738/miniconda3/bin/conda}"
+CONDA="${CONDA:-conda}"
 M2F_GPU="${M2F_GPU:-0}"
 STAMP="$(date +%Y%m%d_%H%M%S)"
 LOG_DIR="${SWIN_L_ROOT}/work_dirs/launch_logs/mask2former_full_cosec_day_floor_savefix_${STAMP}"

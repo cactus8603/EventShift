@@ -44,7 +44,7 @@ def parse_args():
         default="s512:512:1200,s624:624:1200,s768:768:1400,s1024:1024:1600",
         help="Comma-separated name:min_size:max_size entries.",
     )
-    parser.add_argument("--test-root", default="data/test")
+    parser.add_argument("--test-root", required=True)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--zip", default=None)
     parser.add_argument("--device", default="cuda:0")

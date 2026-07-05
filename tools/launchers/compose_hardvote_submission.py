@@ -24,7 +24,7 @@ def parse_args():
         required=True,
         help="Fallback prediction root used when vote agreement is weak or tied.",
     )
-    parser.add_argument("--test-root", default="data/test")
+    parser.add_argument("--test-root", required=True)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--sequences", nargs="+", required=True)
     parser.add_argument("--num-classes", type=int, default=19)

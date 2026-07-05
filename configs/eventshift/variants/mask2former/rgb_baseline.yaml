@@ -10,7 +10,7 @@ data:
 
 model:
   name: swinl_rgb_baseline
-  backend_config: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/configs/mask2former/Mask2Former_SwinL_FullDSEC_CoSEC_ACDC_UnifiedClassCover.yaml
+  backend_config: ${EVENTSHIFT_ROOT:-.}/configs/mask2former/Mask2Former_SwinL_FullDSEC_CoSEC_ACDC_UnifiedClassCover.yaml
   rgb_encoder: swin_large
   event_encoder: none
   fusion: none
@@ -19,14 +19,14 @@ event:
   enabled: false
 
 train:
-  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/cosec_rgb_baseline
+  output_dir: ${EVENTSHIFT_ROOT:-.}/outputs/cosec_rgb_baseline
   num_gpus: 1
   batch_size: 3
   lr: 0.000005
 
 inference:
-  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/cosec_rgb_baseline
+  output_dir: ${EVENTSHIFT_ROOT:-.}/outputs/cosec_rgb_baseline
   progress_desc: mask2former_rgb_baseline
 
 checkpoints:
-  init_weights: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/checkpoints/m2f_full_desc_selected_cosec_day.pth
+  init_weights: null

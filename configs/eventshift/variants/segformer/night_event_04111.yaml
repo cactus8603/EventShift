@@ -3,13 +3,13 @@ project:
 
 model:
   name: segformer_night_event
-  backend_config: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/configs/segformer/SegFormer_B5_FullCoSEC_FromNightBest_Floor546453.py
+  backend_config: ${EVENTSHIFT_ROOT:-.}/configs/segformer/SegFormer_B5_FullCoSEC_FromNightBest_Floor546453.py
 
 checkpoints:
-  init_weights: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/checkpoints/segformer_b5_event_full_cosec_from_night_best_floor546453_lr1e-6_iter4500.pth
+  init_weights: ${EVENTSHIFT_ROOT:-.}/checkpoints/segformer_b5_event_full_cosec_from_night_best_floor546453_lr1e-6_iter4500.pth
 
 inference:
-  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/segformer_night_event
+  output_dir: ${EVENTSHIFT_ROOT:-.}/outputs/segformer_night_event
   progress_desc: segformer_night_event
   sequences:
     - Night_Campus_010

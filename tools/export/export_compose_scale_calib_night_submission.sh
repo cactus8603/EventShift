@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/work/u1621738/ebmv_eccv/eccv_segment/swin_l"
+ROOT="."
 cd "${ROOT}"
 
 export PYTHONNOUSERSITE=1
@@ -15,6 +15,7 @@ export PYTHONUNBUFFERED=1
 : "${REAL_DIR:=work_dirs/submissions/prediction_dirs/acdc54_754_acdconly_tta5126247681024_real_only}"
 : "${OUT_ROOT:=work_dirs/submissions/prediction_dirs}"
 : "${ZIP_ROOT:=work_dirs/submissions/submission_zips}"
+: "${TEST_ROOT:?Set TEST_ROOT=/path/to/cosec/test}"
 
 if [ "${CANDIDATE_ALL:-0}" = "1" ]; then
   threshold_slug="candidate_all"
@@ -40,7 +41,7 @@ zip_path="${ZIP_ROOT}/sub_swinL_day65_4352_daytta_${TAG}_${threshold_slug}_night
 conda run --no-capture-output -n "${CONDA_ENV}" \
   python tools/export_scale_accept_reject_calibrator.py \
     --calibrator "${CALIBRATOR}" \
-    --test-root data/test \
+    --test-root "${TEST_ROOT}" \
     --sequences Night_Campus_010 Night_City_009 Night_Park_009 \
     "${threshold_args[@]}" \
     --out-dir "${night_dir}" \
@@ -51,7 +52,7 @@ python tools/compose_domain_submission.py \
   --day-dir "${DAY_DIR}" \
   --night-dir "${night_dir}" \
   --real-dir "${REAL_DIR}" \
-  --test-root data/test \
+  --test-root "${TEST_ROOT}" \
   --out-dir "${compose_dir}" \
   --zip "${zip_path}" \
   --overwrite

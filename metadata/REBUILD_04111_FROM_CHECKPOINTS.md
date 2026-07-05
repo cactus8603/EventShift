@@ -32,7 +32,7 @@ bash code/rebuild_04111_b75_from_bundle_checkpoints.sh
 Example on the original machine:
 
 ```bash
-TEST_ROOT=/work/u1621738/ebmv_eccv/eccv_segment/swin_l/data/test \
+TEST_ROOT=./data/test \
 bash code/rebuild_04111_b75_from_bundle_checkpoints.sh
 ```
 
@@ -149,7 +149,7 @@ mmseg env: torch, mmseg, mmengine
 The runner defaults are:
 
 ```text
-CONDA=/home/u1621738/miniconda3/bin/conda
+CONDA=conda
 M2F_ENV=mask2former
 MMSEG_ENV=mmseg
 DEVICE=cuda:0

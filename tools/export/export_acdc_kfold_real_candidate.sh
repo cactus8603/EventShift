@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/work/u1621738/ebmv_eccv/eccv_segment/swin_l"
+ROOT="."
 cd "${ROOT}"
 
 export PYTHONNOUSERSITE=1
@@ -9,7 +9,7 @@ export PYTHONUNBUFFERED=1
 
 : "${ENV_NAME:=mask2former}"
 : "${DEVICE:=cuda:0}"
-: "${TEST_ROOT:=/work/u1621738/ebmv_eccv/MambaSeg/data/test}"
+: "${TEST_ROOT:=./data/test}"
 : "${TAG:?Set TAG, e.g. acdc_night_kfold3_fold0}"
 : "${CONFIG_FILE:?Set CONFIG_FILE, e.g. work_dirs/acdc_night_kfold3_fold0_headonly_from_night50_lr5e-8_bs3/config.yaml}"
 : "${WEIGHTS:?Set WEIGHTS, e.g. work_dirs/acdc_night_kfold3_fold0_headonly_from_night50_lr5e-8_bs3/best_model_acdc_night_kfold3_fold0_val.pth}"

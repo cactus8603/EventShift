@@ -26,7 +26,7 @@ def parse_args():
         help="Prediction roots counted as votes. Include base here if it should count.",
     )
     parser.add_argument("--required-dir", required=True, help="Trusted prediction root whose label must be supported.")
-    parser.add_argument("--test-root", default="data/test")
+    parser.add_argument("--test-root", required=True)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--sequences", nargs="+", required=True)
     parser.add_argument("--min-votes", type=int, default=3)

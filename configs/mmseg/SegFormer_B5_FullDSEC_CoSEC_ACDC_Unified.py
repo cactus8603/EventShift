@@ -1,13 +1,16 @@
-_base_ = "/work/u1621738/ebmv_eccv/mmsegmentation/configs/segformer/segformer_mit-b5_8xb1-160k_cityscapes-1024x1024.py"
+import os
+
+MMSEGMENTATION_ROOT = os.getenv("MMSEGMENTATION_ROOT", "third_party/mmsegmentation")
+_base_ = f"{MMSEGMENTATION_ROOT}/configs/segformer/segformer_mit-b5_8xb1-160k_cityscapes-1024x1024.py"
 
 custom_imports = dict(imports=["tools.mmseg_unified_metrics"], allow_failed_imports=False)
 
 crop_size = (512, 1024)
 dataset_type = "CityscapesDataset"
-cosec_root = "/work/u1621738/ebmv_eccv/MambaSeg/data/cosec_mmseg"
-dsec_root = "/work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/mmseg/dsec19_full_flat"
-acdc_root = "/work/u1621738/ebmv_eccv/MambaSeg/data/acdc"
-unified_root = "/work/u1621738/ebmv_eccv/eccv_segment/unified_cosec_acdc/classcover_v1"
+cosec_root = os.getenv("COSEC_MMSEG_ROOT", "data/cosec_mmseg")
+dsec_root = os.getenv("DSEC_MMSEG_ROOT", "work_dirs/mmseg/dsec19_full_flat")
+acdc_root = os.getenv("ACDC_ROOT", "data/acdc")
+unified_root = os.getenv("EVENTSHIFT_UNIFIED_ROOT", "work_dirs/unified_cosec_acdc/classcover_v1")
 
 model = dict(
     backbone=dict(init_cfg=None),
@@ -15,13 +18,9 @@ model = dict(
     test_cfg=dict(mode="slide", crop_size=crop_size, stride=(384, 768)),
 )
 
-load_from = (
-    "/work/u1621738/ebmv_eccv/MambaSeg/log/mmseg/"
-    "segformer_b5_cosec_daynight_finetune/best_day_mIoU_iter_3000.pth"
-)
+load_from = None
 work_dir = (
-    "/work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/mmseg/"
-    "segformer_b5_full_dsec_cosec_acdc_unified"
+    os.getenv("WORK_DIR", "work_dirs/mmseg/segformer_b5_full_dsec_cosec_acdc_unified")
 )
 
 train_pipeline = [

@@ -43,7 +43,6 @@ from filter_nightcity_domain_patch import (  # noqa: E402
 NUM_CLASSES = len(CLASSES)
 DEFAULT_ACDC_ROOTS = (
     Path(os.environ.get("ACDC_ROOT", "")),
-    Path("/work/u1621738/ebmv_eccv/MambaSeg/data/acdc"),
     ROOT / "data" / "acdc",
 )
 

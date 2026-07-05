@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/work/u1621738/ebmv_eccv/eccv_segment"
+ROOT="."
 SWIN_L_ROOT="${ROOT}/swin_l"
-MMSEG_ROOT="/work/u1621738/ebmv_eccv/mmsegmentation"
-MAMBASEG_ROOT="/work/u1621738/ebmv_eccv/MambaSeg"
-CONDA="${CONDA:-/home/u1621738/miniconda3/bin/conda}"
+MMSEG_ROOT="third_party/mmsegmentation"
+MAMBASEG_ROOT="."
+CONDA="${CONDA:-conda}"
 
 M2F_GPU="${M2F_GPU:-0}"
 SEGFORMER_GPU="${SEGFORMER_GPU:-1}"

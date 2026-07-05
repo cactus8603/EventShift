@@ -20,7 +20,7 @@ def parse_args():
     parser.add_argument("--base-dir", required=True)
     parser.add_argument("--high-dir", required=True)
     parser.add_argument("--supporter-dirs", nargs="+", required=True)
-    parser.add_argument("--test-root", default="data/test")
+    parser.add_argument("--test-root", required=True)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--sequences", nargs="+", required=True)
     parser.add_argument("--overwrite", action="store_true")

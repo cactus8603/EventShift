@@ -3,13 +3,13 @@ project:
 
 model:
   name: mask2former_day_event
-  backend_config: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/configs/mask2former/Mask2Former_SwinL_FullCoSEC_FromDayBest_Floor816070_LR5e-7.yaml
+  backend_config: ${EVENTSHIFT_ROOT:-.}/configs/mask2former/Mask2Former_SwinL_FullCoSEC_FromDayBest_Floor816070_LR5e-7.yaml
 
 checkpoints:
-  init_weights: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/checkpoints/m2f_event_full_cosec_from_day_best_floor816070_lr5e-7.pth
+  init_weights: ${EVENTSHIFT_ROOT:-.}/checkpoints/m2f_event_full_cosec_from_day_best_floor816070_lr5e-7.pth
 
 inference:
-  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/mask2former_day_event
+  output_dir: ${EVENTSHIFT_ROOT:-.}/outputs/mask2former_day_event
   progress_desc: mask2former_day_event
   sequences:
     - Day_Campus_012

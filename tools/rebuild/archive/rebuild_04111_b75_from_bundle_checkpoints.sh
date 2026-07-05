@@ -15,7 +15,7 @@ Required:
 
 Common options:
   --out-root PATH           Output root. Defaults to outputs/rebuild_04111_b75_from_checkpoints_<timestamp>.
-  --conda PATH              Conda executable. Defaults to CONDA or /home/u1621738/miniconda3/bin/conda.
+  --conda PATH              Conda executable. Defaults to CONDA or conda.
   --m2f-env NAME            Conda env for Mask2Former exports. Defaults to M2F_ENV or mask2former.
   --mmseg-env NAME          Conda env for MMSeg/SegFormer export. Defaults to MMSEG_ENV or mmseg.
   --device DEVICE           Torch device. Defaults to DEVICE or cuda:0.
@@ -40,7 +40,7 @@ need_value() {
   fi
 }
 
-CONDA="${CONDA:-/home/u1621738/miniconda3/bin/conda}"
+CONDA="${CONDA:-conda}"
 M2F_ENV="${M2F_ENV:-mask2former}"
 MMSEG_ENV="${MMSEG_ENV:-mmseg}"
 DEVICE="${DEVICE:-cuda:0}"

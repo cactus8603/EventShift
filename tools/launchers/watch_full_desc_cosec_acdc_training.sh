@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${ROOT:-/work/u1621738/ebmv_eccv/eccv_segment}"
+ROOT="${ROOT:-.}"
 INTERVAL_SECONDS="${INTERVAL_SECONDS:-300}"
 UNIFIED_ROOT="${ROOT}/unified_cosec_acdc/classcover_v1"
 SYNC_SCRIPT="${ROOT}/swin_l/tools/sync_full_desc_cosec_acdc_best_checkpoints.sh"

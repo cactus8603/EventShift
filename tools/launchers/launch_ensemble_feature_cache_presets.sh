@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/work/u1621738/ebmv_eccv/eccv_segment/swin_l"
-PROJECT_ROOT="/work/u1621738/ebmv_eccv/eccv_segment"
-MAMBASEG_ROOT="/work/u1621738/ebmv_eccv/MambaSeg"
-MMSEG_ROOT="/work/u1621738/ebmv_eccv/mmsegmentation"
-CONDA_EXE="${CONDA_EXE:-/home/u1621738/miniconda3/bin/conda}"
+ROOT="."
+PROJECT_ROOT="."
+MAMBASEG_ROOT="."
+MMSEG_ROOT="third_party/mmsegmentation"
+CONDA_EXE="${CONDA_EXE:-conda}"
 MASK2FORMER_ENV="${MASK2FORMER_ENV:-mask2former}"
 MMSEG_ENV="${MMSEG_ENV:-mmseg}"
 

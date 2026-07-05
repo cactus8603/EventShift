@@ -3,15 +3,11 @@
 This project was reproduced with one conda environment named `ebmv_seg` for both
 Mask2Former/Swin-L and SegFormer/MMSeg inference.
 
-The successful commands used the environment like this:
+After activating `ebmv_seg`, the successful command was:
 
 ```bash
 bash scripts/rebuild_04111.sh \
-  --recipe configs/eventshift/recipes/rebuild_04111_b75.yaml \
-  --test-root /code/ebmv/portable_submission_bundle_v3_20260629/test \
-  --conda /root/miniconda3/bin/conda \
-  --m2f-env ebmv_seg \
-  --mmseg-env ebmv_seg \
+  --test-root /path/to/cosec/test \
   --device cuda:0
 ```
 
@@ -50,48 +46,53 @@ Important compatibility notes:
 
 ## Install From Scratch
 
-From the EventShift repository root:
+From the EventShift repository root, create the environment explicitly:
 
 ```bash
-cd /code/ebmv/EventShift
-conda env create -f environment.yml
-conda activate ebmv_seg
-```
-
-If `environment.yml` is not used, the equivalent manual setup is:
-
-```bash
+cd /path/to/EventShift
 conda create -n ebmv_seg python=3.10 pip setuptools wheel ninja -y
 conda activate ebmv_seg
-
-pip install --extra-index-url https://download.pytorch.org/whl/cu124 \
-  torch==2.6.0+cu124 torchvision==0.21.0+cu124
-
 pip install -r requirements.txt
+```
+
+The same pinned package set is also available through `environment.yml`:
+
+```bash
+conda env create -f environment.yml
+conda activate ebmv_seg
 ```
 
 Install the repository-local Detectron2 source after the base packages:
 
 ```bash
-cd /code/ebmv/EventShift
+cd /path/to/EventShift
 pip install --no-build-isolation -e third_party/detectron2
 ```
 
 Install Mask2Former Python dependencies if they are missing:
 
 ```bash
-cd /code/ebmv/EventShift
+cd /path/to/EventShift
 pip install -r third_party/Mask2Former/requirements.txt
 ```
+
+## MMCV Notes
+
+This release pins `mmcv-lite==2.1.0` because the 0.4111 SegFormer path does
+not require MMCV CUDA ops. If `pip install -r requirements.txt` fails while
+resolving or building `mmcv`/`mmcv-lite`, first compare against the verified
+package list above and then follow the official [MMCV installation guide](https://mmcv.readthedocs.io/en/latest/get_started/installation.html)
+for the PyTorch/CUDA combination on the target machine. Avoid installing both
+`mmcv` and `mmcv-lite` in the same environment.
 
 Mask2Former's pixel decoder ops are source-only in this submission. Rebuild them
 on the target machine only if the local import path requires the native
 extension:
 
 ```bash
-cd /code/ebmv/EventShift/third_party/Mask2Former/mask2former/modeling/pixel_decoder/ops
+cd /path/to/EventShift/third_party/Mask2Former/mask2former/modeling/pixel_decoder/ops
 sh make.sh
-cd /code/ebmv/EventShift
+cd /path/to/EventShift
 ```
 
 ## Quick Validation
@@ -99,7 +100,7 @@ cd /code/ebmv/EventShift
 Run these probes after installation:
 
 ```bash
-conda run -n ebmv_seg python -c "import torch, cv2, yaml, timm, detectron2, mmseg, mmengine, mmcv; print('torch', torch.__version__, 'cuda', torch.version.cuda, 'cuda_available', torch.cuda.is_available()); print('cv2', cv2.__version__); print('detectron2', detectron2.__version__); print('mmseg', mmseg.__version__); print('mmengine', mmengine.__version__); print('mmcv', mmcv.__version__)"
+python -c "import torch, cv2, yaml, timm, detectron2, mmseg, mmengine, mmcv; print('torch', torch.__version__, 'cuda', torch.version.cuda, 'cuda_available', torch.cuda.is_available()); print('cv2', cv2.__version__); print('detectron2', detectron2.__version__); print('mmseg', mmseg.__version__); print('mmengine', mmengine.__version__); print('mmcv', mmcv.__version__)"
 ```
 
 Expected output should include CUDA availability on a GPU machine and versions
@@ -115,16 +116,12 @@ artifacts/submission_zips/*.zip
 TEST_ROOT containing the CoSEC/DSEC test folders
 ```
 
-Run:
+Run from the activated `ebmv_seg` environment:
 
 ```bash
-cd /code/ebmv/EventShift
+cd /path/to/EventShift
 bash scripts/rebuild_04111.sh \
-  --recipe configs/eventshift/recipes/rebuild_04111_b75.yaml \
   --test-root /path/to/test \
-  --conda /root/miniconda3/bin/conda \
-  --m2f-env ebmv_seg \
-  --mmseg-env ebmv_seg \
   --device cuda:0
 ```
 

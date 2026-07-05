@@ -5,9 +5,9 @@ rebuild:
   expected_final_zip: artifacts/submission_zips/sub_pipeline_b75_eventseg_plus_realgate60a5000_20260629.zip
 
   runtime:
-    conda: ${CONDA:-/home/u1621738/miniconda3/bin/conda}
-    m2f_env: ${M2F_ENV:-mask2former}
-    mmseg_env: ${MMSEG_ENV:-mmseg}
+    conda:
+    m2f_env: ${M2F_ENV:-ebmv_seg}
+    mmseg_env: ${MMSEG_ENV:-ebmv_seg}
     device: ${DEVICE:-cuda:0}
     deterministic: ${EVENTSHIFT_DETERMINISTIC:-1}
 

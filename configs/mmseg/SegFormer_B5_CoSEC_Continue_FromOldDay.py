@@ -1,13 +1,10 @@
-_base_ = "/work/u1621738/ebmv_eccv/MambaSeg/configs/SegFormer_B5_CoSEC_DayNight_Finetune.py"
+_base_ = "./configs/SegFormer_B5_CoSEC_DayNight_Finetune.py"
 
-data_root = "/work/u1621738/ebmv_eccv/MambaSeg/data/cosec_mmseg"
+data_root = "./data/cosec_mmseg"
 
-load_from = (
-    "/work/u1621738/ebmv_eccv/MambaSeg/log/mmseg/"
-    "segformer_b5_cosec_daynight_finetune/best_day_mIoU_iter_3000.pth"
-)
+load_from = None
 work_dir = (
-    "/work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/mmseg/"
+    "./work_dirs/mmseg/"
     "segformer_b5_cosec_continue_from_old_day_lr1e-5"
 )
 

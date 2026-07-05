@@ -10,7 +10,7 @@ from mmseg.registry import DATASETS, MODELS
 from mmseg.utils import register_all_modules
 
 
-ROOT = Path("/work/u1621738/ebmv_eccv/eccv_segment/swin_l")
+ROOT = Path(".")
 DEFAULT_CONFIGS = [
     ROOT / "configs/mmseg/HRNet_OCR_W48_CoSEC_Finetune.py",
     ROOT / "configs/mmseg/HRNet_OCR_W48_ACDC_Night_Finetune.py",

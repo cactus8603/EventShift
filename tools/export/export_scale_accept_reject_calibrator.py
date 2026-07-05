@@ -54,7 +54,7 @@ def parse_args():
         default=None,
         help="Optional override. Defaults to specs stored in the calibrator checkpoint.",
     )
-    parser.add_argument("--test-root", default="data/test")
+    parser.add_argument("--test-root", required=True)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--zip", default=None)
     parser.add_argument("--device", default="cuda:0")
@@ -100,7 +100,7 @@ def split_opts(opts):
 def setup_cfg(args, min_size, max_size):
     sys.path.insert(0, str(ROOT / "third_party" / "Mask2Former"))
     if importlib.util.find_spec("detectron2") is None:
-    sys.path.insert(0, str(ROOT / "third_party" / "detectron2"))
+        sys.path.insert(0, str(ROOT / "third_party" / "detectron2"))
     from detectron2.config import get_cfg  # pylint: disable=import-outside-toplevel
     from detectron2.projects.deeplab import add_deeplab_config  # pylint: disable=import-outside-toplevel
     from mask2former import add_maskformer2_config  # pylint: disable=import-outside-toplevel

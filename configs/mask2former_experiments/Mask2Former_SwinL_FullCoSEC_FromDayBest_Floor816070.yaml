@@ -3,7 +3,7 @@ DATASETS:
   TRAIN: ("cosec_unified_classcover_v1_train",)
   TEST: ("cosec_unified_classcover_v1_day_val",)
 MODEL:
-  WEIGHTS: "/work/u1621738/ebmv_eccv/eccv_segment/unified_cosec_acdc/classcover_v1/checkpoints/full_desc_cosec_acdc/mask2former/selected/best_model_cosec_day.pth"
+  WEIGHTS: ""
 SOLVER:
   BASE_LR: 0.0000005
   MAX_ITER: 6000

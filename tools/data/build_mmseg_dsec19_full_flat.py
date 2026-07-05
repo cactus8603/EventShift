@@ -4,11 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 
-DEFAULT_ROOT = Path("/work/u1621738/ebmv_eccv/eccv_segment/swin_l/data/dsec")
-DEFAULT_OUT = Path("/work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/mmseg/dsec19_full_flat")
+DEFAULT_ROOT = Path(os.environ.get("DSEC_ROOT", "data/dsec"))
+DEFAULT_OUT = Path(os.environ.get("DSEC_MMSEG_ROOT", "work_dirs/mmseg/dsec19_full_flat"))
 
 
 def safe_symlink(source: Path, target: Path) -> None:

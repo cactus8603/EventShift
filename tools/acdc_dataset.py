@@ -17,7 +17,6 @@ ROOT = _eventshift_root()
 WORKSPACE_ROOT = ROOT.parent
 DEFAULT_ACDC_ROOTS = (
     Path(os.environ.get("ACDC_ROOT", "")),
-    Path("/work/u1621738/ebmv_eccv/MambaSeg/data/acdc"),
     ROOT / "data" / "acdc",
 )
 DEFAULT_ACDC_SPLIT_DIRS = (

@@ -1,6 +1,6 @@
 project:
   name: EventShift
-  root: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}
+  root: ${EVENTSHIFT_ROOT:-.}
 
 runtime:
   device: ${DEVICE:-cuda:0}
@@ -27,12 +27,12 @@ checkpoints:
   init_weights: null
 
 train:
-  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/eventshift
+  output_dir: ${EVENTSHIFT_ROOT:-.}/outputs/eventshift
   num_gpus: 1
   batch_size: 3
   lr: 0.000005
 
 inference:
-  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/infer
+  output_dir: ${EVENTSHIFT_ROOT:-.}/outputs/infer
   progress_desc: EventShift
   extra_args: []

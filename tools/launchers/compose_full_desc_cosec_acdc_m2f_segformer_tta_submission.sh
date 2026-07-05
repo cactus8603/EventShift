@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${ROOT:-/work/u1621738/ebmv_eccv/eccv_segment}"
+ROOT="${ROOT:-.}"
 SWIN_L_ROOT="${SWIN_L_ROOT:-${ROOT}/swin_l}"
-MAMBASEG_ROOT="${MAMBASEG_ROOT:-/work/u1621738/ebmv_eccv/MambaSeg}"
-CONDA="${CONDA:-/home/u1621738/miniconda3/bin/conda}"
+MAMBASEG_ROOT="${MAMBASEG_ROOT:-.}"
+CONDA="${CONDA:-conda}"
 TEST_ROOT="${TEST_ROOT:-${MAMBASEG_ROOT}/data/test}"
 
 RUN_TAG="${RUN_TAG:-full_desc_cosec_acdc_m2f_segformer_maskdino_tta_domainweights_gpu0_now_20260628}"

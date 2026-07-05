@@ -29,8 +29,8 @@ training/scripts/                  Bundle-local training launchers
 Mask2Former:
 
 ```bash
-cd /code/ebmv/portable_submission_bundle_v3_20260629/traincode_04111
-PYTHON_BIN=/root/miniconda3/envs/ebmv_seg/bin/python \
+cd /path/to/traincode_04111
+PYTHON_BIN=python \
 bash training/scripts/train_mask2former_from_bundle.sh \
   configs/Mask2Former_SwinL_FullCoSEC_FromDayBest_Floor816070_LR5e-7.yaml
 ```
@@ -38,8 +38,8 @@ bash training/scripts/train_mask2former_from_bundle.sh \
 SegFormer / MMSeg:
 
 ```bash
-cd /code/ebmv/portable_submission_bundle_v3_20260629/traincode_04111
-PYTHON_BIN=/root/miniconda3/envs/ebmv_seg/bin/python \
+cd /path/to/traincode_04111
+PYTHON_BIN=python \
 bash training/scripts/train_segformer_from_bundle.sh \
   configs/mmseg/SegFormer_B5_FullCoSEC_FromNightBest_Floor546453.py
 ```
@@ -47,8 +47,8 @@ bash training/scripts/train_segformer_from_bundle.sh \
 MaskDINO:
 
 ```bash
-cd /code/ebmv/portable_submission_bundle_v3_20260629/traincode_04111
-PYTHON_BIN=/root/miniconda3/envs/ebmv_seg/bin/python \
+cd /path/to/traincode_04111
+PYTHON_BIN=python \
 bash training/scripts/train_maskdino_from_bundle.sh
 ```
 

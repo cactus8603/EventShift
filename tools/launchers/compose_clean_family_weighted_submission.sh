@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${ROOT:-/work/u1621738/ebmv_eccv/eccv_segment}"
+ROOT="${ROOT:-.}"
 SWIN_L_ROOT="${SWIN_L_ROOT:-${ROOT}/swin_l}"
-CONDA="${CONDA:-/home/u1621738/miniconda3/bin/conda}"
-TEST_ROOT="${TEST_ROOT:-/work/u1621738/ebmv_eccv/MambaSeg/data/test}"
+CONDA="${CONDA:-conda}"
+TEST_ROOT="${TEST_ROOT:-./data/test}"
 
 RUN_TAG="${RUN_TAG:-clean_fulldesc_kfold3_weighted_tta_20260628}"
 FULLDESC_RAW="${FULLDESC_RAW:-${SWIN_L_ROOT}/work_dirs/submissions/prediction_dirs/full_desc_cosec_acdc_m2f_segformer_maskdino_tta_domainweights_gpu0_now_20260628_raw}"

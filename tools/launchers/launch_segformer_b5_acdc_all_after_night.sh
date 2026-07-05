@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/work/u1621738/ebmv_eccv/eccv_segment/swin_l"
-MMSEG_ROOT="/work/u1621738/ebmv_eccv/mmsegmentation"
-MAMBASEG_ROOT="/work/u1621738/ebmv_eccv/MambaSeg"
-CONDA="/home/u1621738/miniconda3/bin/conda"
+ROOT="."
+MMSEG_ROOT="third_party/mmsegmentation"
+MAMBASEG_ROOT="."
+CONDA="conda"
 ENV_NAME="mmseg"
 GPU_ID="${GPU_ID:-1}"
 LOG_DIR="${ROOT}/work_dirs/launch_logs"

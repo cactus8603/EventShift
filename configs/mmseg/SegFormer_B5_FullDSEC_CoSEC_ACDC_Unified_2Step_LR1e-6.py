@@ -2,8 +2,7 @@ _base_ = "./SegFormer_B5_FullDSEC_CoSEC_ACDC_Unified.py"
 
 load_from = None
 work_dir = (
-    "/work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/mmseg/"
-    "segformer_b5_full_dsec_cosec_acdc_unified_2step_lr1e-6"
+    os.getenv("WORK_DIR", "work_dirs/mmseg/segformer_b5_full_dsec_cosec_acdc_unified_2step_lr1e-6")
 )
 
 train_cfg = dict(type="IterBasedTrainLoop", max_iters=8000, val_interval=500)

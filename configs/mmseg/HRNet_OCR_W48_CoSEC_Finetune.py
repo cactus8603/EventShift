@@ -1,9 +1,9 @@
-_base_ = "/work/u1621738/ebmv_eccv/mmsegmentation/configs/ocrnet/ocrnet_hr48_4xb2-160k_cityscapes-512x1024.py"
+_base_ = "third_party/mmsegmentation/configs/ocrnet/ocrnet_hr48_4xb2-160k_cityscapes-512x1024.py"
 
 custom_imports = dict(imports=["tools.mmseg_cosec_metrics"], allow_failed_imports=False)
 
 crop_size = (512, 1024)
-data_root = "/work/u1621738/ebmv_eccv/MambaSeg/data/cosec_mmseg"
+data_root = "./data/cosec_mmseg"
 dataset_type = "CityscapesDataset"
 
 model = dict(
@@ -12,12 +12,9 @@ model = dict(
     test_cfg=dict(mode="slide", crop_size=crop_size, stride=(384, 768)),
 )
 
-load_from = (
-    "/work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/pretrained/"
-    "ocrnet_hr48_512x1024_160k_cityscapes_20200602_191037-dfbf1b0c.pth"
-)
+load_from = None
 work_dir = (
-    "/work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/mmseg/"
+    "./work_dirs/mmseg/"
     "hrnet_ocr_w48_cosec_from_cityscapes_lr5e-4"
 )
 

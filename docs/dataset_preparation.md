@@ -6,6 +6,16 @@ The current public workflow uses an args-first interface. Lower-level dataset lo
 
 ## Quick Setup
 
+Create the local workspace directories and generate the recommended CoSEC split files with the shell entry point:
+
+```bash
+bash scripts/prepare_data.sh \
+  --cosec-root /path/to/cosec/train \
+  --split-dir data/splits/cosec
+```
+
+The script builds the sequence-level k-fold files and the default frame-list domain-cover prefix split. Set dataset paths explicitly on training/inference commands when possible. Lower-level loaders also support these environment variables:
+
 ```bash
 export COSEC_ROOT=/path/to/cosec/train
 export TEST_ROOT=/path/to/cosec/test
@@ -13,7 +23,7 @@ export BRENET_ROOT=/path/to/BRENet
 export EVENTSHIFT_COSEC_MANIFEST=/path/to/BRENet/projects/brenet_cosec/manifests/cosec_train_bidir_50ms.json
 export DSEC_ROOT=/path/to/dsec
 export ACDC_ROOT=/path/to/acdc
-export EVENTSHIFT_COSEC_SPLIT_DIR=/path/to/BRENet/projects/brenet_cosec/splits
+export EVENTSHIFT_COSEC_SPLIT_DIR=/path/to/cosec/splits
 export ACDC_SPLIT_DIR=/path/to/acdc/splits
 export DSEC_FILTERED_630_MANIFEST=/path/to/dsec19_filtered_medium_more_630.json
 ```
@@ -22,10 +32,7 @@ For normal test inference or the 0.4111 rebuild, only `--test-root` is required:
 
 ```bash
 bash scripts/rebuild_04111.sh \
-  --test-root /path/to/cosec/test \
-  --conda /root/miniconda3/bin/conda \
-  --m2f-env ebmv_seg \
-  --mmseg-env ebmv_seg
+  --test-root /path/to/cosec/test
 ```
 
 For training, pass the dataset roots explicitly when possible:

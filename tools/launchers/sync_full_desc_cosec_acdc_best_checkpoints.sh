@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${ROOT:-/work/u1621738/ebmv_eccv/eccv_segment}"
+ROOT="${ROOT:-.}"
 REGISTRY="${REGISTRY:-${ROOT}/unified_cosec_acdc/classcover_v1/checkpoints/full_desc_cosec_acdc}"
 MANIFEST="${REGISTRY}/MANIFEST.tsv"
 

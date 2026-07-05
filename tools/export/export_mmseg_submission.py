@@ -52,7 +52,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config-file", required=True)
     parser.add_argument("--checkpoint", required=True)
-    parser.add_argument("--test-root", default=str(ROOT / "data/test"))
+    parser.add_argument("--test-root", required=True)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--zip", default=None)
     parser.add_argument("--device", default="cuda:0")

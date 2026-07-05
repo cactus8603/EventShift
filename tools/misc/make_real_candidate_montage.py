@@ -67,7 +67,7 @@ def main():
     parser.add_argument("--analysis-json", type=Path, required=True)
     parser.add_argument("--pair", required=True, help="candidate_a:candidate_b")
     parser.add_argument("--candidate", action="append", type=parse_candidate, required=True)
-    parser.add_argument("--test-root", type=Path, default=Path("data/test"))
+    parser.add_argument("--test-root", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--topn", type=int, default=5)
     parser.add_argument("--cell-width", type=int, default=300)

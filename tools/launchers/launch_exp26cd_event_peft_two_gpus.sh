@@ -18,7 +18,7 @@ launch_one() {
   local config="$3"
   local log_file="${log_dir}/${name}_${stamp}.log"
   setsid bash -lc "
-    cd /work/u1621738/ebmv_eccv/eccv_segment/swin_l
+    cd .
     export PYTHONNOUSERSITE=1 PYTHONUNBUFFERED=1 CUDA_VISIBLE_DEVICES=${gpu}
     conda run --no-capture-output -n ${CONDA_ENV} \
       python tools/train_mask2former_cosec.py \

@@ -11,7 +11,7 @@ data:
 
 model:
   name: event_edge_only
-  backend_config: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/configs/mask2former_experiments/Mask2Former_SwinL_CoSEC_EventEdgeSemantic_Exp3a.yaml
+  backend_config: ${EVENTSHIFT_ROOT:-.}/configs/mask2former_experiments/Mask2Former_SwinL_CoSEC_EventEdgeSemantic_Exp3a.yaml
   rgb_encoder: frozen_rgb_feature
   event_encoder: event_edge
   fusion: edge_head
@@ -24,11 +24,11 @@ event:
   support_percentile: 80.0
 
 train:
-  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/cosec_event_only
+  output_dir: ${EVENTSHIFT_ROOT:-.}/outputs/cosec_event_only
   num_gpus: 1
   batch_size: 48
   lr: 0.0001
 
 inference:
-  output_dir: ${EVENTSHIFT_ROOT:-/code/ebmv/EventShift}/outputs/cosec_event_only
+  output_dir: ${EVENTSHIFT_ROOT:-.}/outputs/cosec_event_only
   progress_desc: mask2former_event_only

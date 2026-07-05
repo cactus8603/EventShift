@@ -32,9 +32,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--recipe", default=DEFAULT_RECIPE, help="Recipe YAML under configs/eventshift/recipes.")
     parser.add_argument("--test-root", default=os.environ.get("TEST_ROOT"), help="CoSEC test root containing sequence/img_co_left folders.")
     parser.add_argument("--out-root", default=os.environ.get("OUT_ROOT"), help="Output root.")
-    parser.add_argument("--conda", default=None, help="Conda executable.")
-    parser.add_argument("--m2f-env", default=None, help="Conda env for Mask2Former exports.")
-    parser.add_argument("--mmseg-env", default=None, help="Conda env for MMSeg/SegFormer exports.")
+    parser.add_argument("--conda", default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--m2f-env", default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--mmseg-env", default=None, help=argparse.SUPPRESS)
     parser.add_argument("--device", default=None, help="Torch device.")
     parser.add_argument("--smoke-limit", default=os.environ.get("SMOKE_LIMIT"), help="Export only first N frames per model and stop before composition.")
     parser.add_argument("--skip-inference", action="store_true", help="Reuse existing raw masks under --out-root.")
@@ -117,8 +117,10 @@ def make_env(root: Path, backend_name: str | None = None) -> dict[str, str]:
     return env
 
 
-def conda_python(conda: Path, env_name: str, script: Path, args: list[str]) -> list[str]:
-    return [str(conda), "run", "--no-capture-output", "-n", env_name, "python", str(script), *args]
+def python_command(conda: Path | None, env_name: str | None, script: Path, args: list[str]) -> list[str]:
+    if conda and env_name:
+        return [str(conda), "run", "--no-capture-output", "-n", env_name, "python", str(script), *args]
+    return [sys.executable, str(script), *args]
 
 
 def run_command(command: list[str], env: dict[str, str]) -> None:
@@ -141,10 +143,11 @@ def resolve_runtime(args: argparse.Namespace, rebuild_cfg: dict[str, Any], root:
     if args.run_inference:
         run_inference = True
 
+    conda_value = args.conda or runtime.get("conda") or None
     return {
-        "conda": as_path(args.conda or runtime.get("conda"), root),
-        "m2f_env": args.m2f_env or runtime.get("m2f_env", "mask2former"),
-        "mmseg_env": args.mmseg_env or runtime.get("mmseg_env", "mmseg"),
+        "conda": as_path(conda_value, root) if conda_value else None,
+        "m2f_env": args.m2f_env or runtime.get("m2f_env") or os.environ.get("CONDA_DEFAULT_ENV") or "ebmv_seg",
+        "mmseg_env": args.mmseg_env or runtime.get("mmseg_env") or os.environ.get("CONDA_DEFAULT_ENV") or "ebmv_seg",
         "device": args.device or runtime.get("device", "cuda:0"),
         "deterministic": deterministic,
         "run_inference": run_inference,
@@ -199,7 +202,7 @@ def exporter_command(
         extra_args = [arg for arg in extra_args if arg != "--flip"]
     command_args.extend(extra_args)
 
-    command = conda_python(conda, env_name, root / backend.script, command_args)
+    command = python_command(conda, env_name, root / backend.script, command_args)
     return command, make_env(root, backend.name)
 
 
@@ -255,7 +258,7 @@ def extract_zip(zip_path: Path, out_dir: Path) -> None:
 
 
 def run_bundle_python(root: Path, runtime: dict[str, Any], script: Path, args: list[str]) -> None:
-    command = conda_python(runtime["conda"], runtime["m2f_env"], script, args)
+    command = python_command(runtime["conda"], runtime["m2f_env"], script, args)
     run_command(command, make_env(root, backend_name=None))
 
 
@@ -390,7 +393,8 @@ def main() -> None:
         raise SystemExit("--test-root is required. Example: bash scripts/rebuild_04111.sh --test-root /path/to/test")
     test_root = as_path(args.test_root, root)
     check_path(test_root)
-    check_path(runtime["conda"])
+    if runtime["conda"]:
+        check_path(runtime["conda"])
 
     if runtime["deterministic"]:
         os.environ["EVENTSHIFT_DETERMINISTIC"] = "1"
@@ -414,6 +418,11 @@ def main() -> None:
     print(f"TEST_ROOT={test_root}", flush=True)
     print(f"OUT_ROOT={out_root}", flush=True)
     print(f"DEVICE={runtime['device']}", flush=True)
+    if runtime["conda"]:
+        print(f"CONDA={runtime['conda']}", flush=True)
+        print(f"M2F_ENV={runtime['m2f_env']} MMSEG_ENV={runtime['mmseg_env']}", flush=True)
+    else:
+        print(f"PYTHON={sys.executable}", flush=True)
 
     # Validate model configs and weights before any long-running export starts.
     for export_item in recipe["exports"]:

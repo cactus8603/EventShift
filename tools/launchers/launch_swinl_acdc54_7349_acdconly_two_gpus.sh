@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/work/u1621738/ebmv_eccv/eccv_segment/swin_l"
+ROOT="."
 cd "${ROOT}"
 
 export PYTHONNOUSERSITE=1

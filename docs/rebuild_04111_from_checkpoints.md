@@ -16,15 +16,11 @@ aAcc 0.8973025919
 
 ## One-Command Runner
 
-Use the `ebmv_seg` conda environment for both Mask2Former and SegFormer paths. See `docs/ebmv_seg_environment.md` for installation details.
+Run from the activated `ebmv_seg` environment. See `docs/ebmv_seg_environment.md` for installation details.
 
 ```bash
 bash scripts/rebuild_04111.sh \
-  --recipe configs/eventshift/recipes/rebuild_04111_b75.yaml \
   --test-root /path/to/test \
-  --conda /root/miniconda3/bin/conda \
-  --m2f-env ebmv_seg \
-  --mmseg-env ebmv_seg \
   --device cuda:0
 ```
 
@@ -45,9 +41,6 @@ For a quick path and argument check without model inference:
 ```bash
 bash scripts/rebuild_04111.sh \
   --test-root /path/to/test \
-  --conda /root/miniconda3/bin/conda \
-  --m2f-env ebmv_seg \
-  --mmseg-env ebmv_seg \
   --smoke-limit 0 \
   --skip-inference
 ```

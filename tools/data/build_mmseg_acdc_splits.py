@@ -14,6 +14,7 @@ with image suffix ``_rgb_anon.png`` and label suffix
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 
@@ -49,12 +50,12 @@ def main() -> None:
     parser.add_argument(
         "--acdc-root",
         type=Path,
-        default=Path("/work/u1621738/ebmv_eccv/MambaSeg/data/acdc"),
+        default=Path(os.environ.get("ACDC_ROOT", "data/acdc")),
     )
     parser.add_argument(
         "--out-dir",
         type=Path,
-        default=Path("/work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/mmseg/acdc_splits"),
+        default=Path(os.environ.get("ACDC_SPLIT_DIR", "work_dirs/mmseg/acdc_splits")),
     )
     args = parser.parse_args()
 

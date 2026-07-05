@@ -17,8 +17,8 @@ maskdino/                 MaskDINO configs
 Use the public scripts with model/variant selection when possible:
 
 ```bash
-bash scripts/infer.sh --model mask2former --variant rgb_baseline --test-root /path/to/test
-bash scripts/infer.sh --model segformer --variant night_event_04111 --test-root /path/to/test
+bash scripts/infer.sh --model mask2former --variant rgb_baseline --weights /path/to/checkpoints/mask2former_rgb.pth --test-root /path/to/test
+bash scripts/infer.sh --model segformer --variant night_event_04111 --weights /path/to/checkpoints/segformer_night.pth --test-root /path/to/test
 ```
 
 Legacy full config paths under `configs/eventshift/*.yaml` remain supported and now compose the same base/model/variant files internally.

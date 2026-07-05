@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${ROOT:-/work/u1621738/ebmv_eccv/eccv_segment}"
+ROOT="${ROOT:-.}"
 SWIN_L_ROOT="${SWIN_L_ROOT:-${ROOT}/swin_l}"
-CONDA="${CONDA:-/home/u1621738/miniconda3/bin/conda}"
-TEST_ROOT="${TEST_ROOT:-/work/u1621738/ebmv_eccv/MambaSeg/data/test}"
+CONDA="${CONDA:-conda}"
+TEST_ROOT="${TEST_ROOT:-./data/test}"
 
 TAG="${TAG:-sub_eventanchors_04085flow_$(date +%Y%m%d_%H%M%S)}"
 OVERWRITE="${OVERWRITE:-1}"

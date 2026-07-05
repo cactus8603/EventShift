@@ -1,5 +1,5 @@
 checkpoint = 'https://download.openmmlab.com/mmsegmentation/v0.5/pretrain/segformer/mit_b5_20220624-658746d9.pth'
-cosec_root = '/work/u1621738/ebmv_eccv/MambaSeg/data/cosec_mmseg'
+cosec_root = './data/cosec_mmseg'
 crop_size = (
     512,
     1024,
@@ -65,7 +65,7 @@ img_ratios = [
     1.75,
 ]
 launcher = 'none'
-load_from = '/work/u1621738/ebmv_eccv/eccv_segment/unified_cosec_acdc/classcover_v1/checkpoints/full_desc_cosec_acdc/segformer/selected/best_night_mIoU.pth'
+load_from = None
 log_level = 'INFO'
 log_processor = dict(by_epoch=False)
 model = dict(
@@ -191,9 +191,9 @@ test_dataloader = dict(
     batch_size=1,
     dataset=dict(
         ann_file=
-        '/work/u1621738/ebmv_eccv/eccv_segment/unified_cosec_acdc/classcover_v1/splits/cosec/val_unified_classcover_v1.txt',
+        './unified_cosec_acdc/classcover_v1/splits/cosec/val_unified_classcover_v1.txt',
         data_prefix=dict(img_path='images', seg_map_path='labels'),
-        data_root='/work/u1621738/ebmv_eccv/MambaSeg/data/cosec_mmseg',
+        data_root='./data/cosec_mmseg',
         img_suffix='.png',
         pipeline=[
             dict(type='LoadImageFromFile'),
@@ -227,9 +227,9 @@ train_dataloader = dict(
     batch_size=1,
     dataset=dict(
         ann_file=
-        '/work/u1621738/ebmv_eccv/eccv_segment/unified_cosec_acdc/classcover_v1/splits/cosec/train_unified_classcover_v1.txt',
+        './unified_cosec_acdc/classcover_v1/splits/cosec/train_unified_classcover_v1.txt',
         data_prefix=dict(img_path='images', seg_map_path='labels'),
-        data_root='/work/u1621738/ebmv_eccv/MambaSeg/data/cosec_mmseg',
+        data_root='./data/cosec_mmseg',
         img_suffix='.png',
         pipeline=[
             dict(type='LoadImageFromFile'),
@@ -307,15 +307,15 @@ tta_pipeline = [
         ],
         type='TestTimeAug'),
 ]
-unified_root = '/work/u1621738/ebmv_eccv/eccv_segment/unified_cosec_acdc/classcover_v1'
+unified_root = './unified_cosec_acdc/classcover_v1'
 val_cfg = dict(type='ValLoop')
 val_dataloader = dict(
     batch_size=1,
     dataset=dict(
         ann_file=
-        '/work/u1621738/ebmv_eccv/eccv_segment/unified_cosec_acdc/classcover_v1/splits/cosec/val_unified_classcover_v1.txt',
+        './unified_cosec_acdc/classcover_v1/splits/cosec/val_unified_classcover_v1.txt',
         data_prefix=dict(img_path='images', seg_map_path='labels'),
-        data_root='/work/u1621738/ebmv_eccv/MambaSeg/data/cosec_mmseg',
+        data_root='./data/cosec_mmseg',
         img_suffix='.png',
         pipeline=[
             dict(type='LoadImageFromFile'),
@@ -344,4 +344,4 @@ visualizer = dict(
     vis_backends=[
         dict(type='LocalVisBackend'),
     ])
-work_dir = '/work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/mmseg/segformer_b5_full_cosec_from_night_best_floor546453_lr1e-6'
+work_dir = './work_dirs/mmseg/segformer_b5_full_cosec_from_night_best_floor546453_lr1e-6'

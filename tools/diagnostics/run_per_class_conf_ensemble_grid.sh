@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/work/u1621738/ebmv_eccv/eccv_segment/swin_l"
-CONDA="${CONDA:-/home/u1621738/miniconda3/bin/conda}"
+ROOT="."
+CONDA="${CONDA:-conda}"
 ENV_NAME="${ENV_NAME:-mask2former}"
 CACHE_ROOT="${CACHE_ROOT:-$ROOT/work_dirs/ensemble_feature_cache}"
 OUT_ROOT="${OUT_ROOT:-$ROOT/work_dirs/ensemble_per_class_conf}"

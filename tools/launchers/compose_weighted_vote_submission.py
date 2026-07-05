@@ -39,7 +39,7 @@ def parse_args():
         default=None,
         help="Prediction root used when weighted scores tie. Defaults to the first input dir.",
     )
-    parser.add_argument("--test-root", default="data/test")
+    parser.add_argument("--test-root", required=True)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--sequences", nargs="+", required=True)
     parser.add_argument("--overwrite", action="store_true")

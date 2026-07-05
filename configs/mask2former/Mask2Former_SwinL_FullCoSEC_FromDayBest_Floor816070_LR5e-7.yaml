@@ -514,8 +514,8 @@ MODEL:
     USE_CHECKPOINT: false
     WINDOW_SIZE: 12
   TRAINABLE_PREFIXES: []
-  WEIGHTS: /work/u1621738/ebmv_eccv/eccv_segment/unified_cosec_acdc/classcover_v1/checkpoints/full_desc_cosec_acdc/mask2former/selected/best_model_cosec_day.pth
-OUTPUT_DIR: /work/u1621738/ebmv_eccv/eccv_segment/swin_l/work_dirs/swinL_full_cosec_from_day_best_floor816070_lr5e-7_savefix_20260628_225858
+  WEIGHTS: ""
+OUTPUT_DIR: work_dirs/swinL_full_cosec_from_day_best_floor816070_lr5e-7
 SEED: -1
 SOLVER:
   AMP:

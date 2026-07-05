@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/work/u1621738/ebmv_eccv/eccv_segment/swin_l"
+ROOT="."
 cd "${ROOT}"
 
 export PYTHONNOUSERSITE=1
@@ -11,7 +11,7 @@ export PYTHONUNBUFFERED=1
 : "${OUT_TAG:?Set OUT_TAG, e.g. acdc_all_kfold3_tta_vote_anchor}"
 : "${INPUT_TAGS:?Set INPUT_TAGS as space-separated prediction tags without trailing _real_only.}"
 
-TEST_ROOT="${TEST_ROOT:-/work/u1621738/ebmv_eccv/MambaSeg/data/test}"
+TEST_ROOT="${TEST_ROOT:-./data/test}"
 PRED_DIR="work_dirs/submissions/prediction_dirs"
 COMPOSE_DIR="work_dirs/submissions/composed"
 ZIP_DIR="work_dirs/submissions/submission_zips"

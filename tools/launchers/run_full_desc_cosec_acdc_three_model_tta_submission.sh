@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${ROOT:-/work/u1621738/ebmv_eccv/eccv_segment}"
+ROOT="${ROOT:-.}"
 SWIN_L_ROOT="${SWIN_L_ROOT:-${ROOT}/swin_l}"
 MASKDINO_ROOT="${MASKDINO_ROOT:-${ROOT}/maskdino_swinl}"
-MAMBASEG_ROOT="${MAMBASEG_ROOT:-/work/u1621738/ebmv_eccv/MambaSeg}"
-MMSEG_ROOT="${MMSEG_ROOT:-/work/u1621738/ebmv_eccv/mmsegmentation}"
-CONDA="${CONDA:-/home/u1621738/miniconda3/bin/conda}"
+MAMBASEG_ROOT="${MAMBASEG_ROOT:-.}"
+MMSEG_ROOT="${MMSEG_ROOT:-third_party/mmsegmentation}"
+CONDA="${CONDA:-conda}"
 TEST_ROOT="${TEST_ROOT:-${MAMBASEG_ROOT}/data/test}"
 CKPT_ROOT="${CKPT_ROOT:-${ROOT}/unified_cosec_acdc/classcover_v1/checkpoints/full_desc_cosec_acdc}"
 SYNC_CHECKPOINTS="${SYNC_CHECKPOINTS:-1}"

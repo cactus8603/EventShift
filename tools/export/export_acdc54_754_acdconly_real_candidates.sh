@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="/work/u1621738/ebmv_eccv/eccv_segment/swin_l"
+ROOT="."
 cd "$ROOT"
 
 DEVICE="${DEVICE:-cuda:0}"
-TEST_ROOT="${TEST_ROOT:-/work/u1621738/ebmv_eccv/MambaSeg/data/test}"
+TEST_ROOT="${TEST_ROOT:-./data/test}"
 ENV_NAME="${ENV_NAME:-mask2former}"
 
 TAG="acdc54_754_acdconly"

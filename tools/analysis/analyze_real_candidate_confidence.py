@@ -196,7 +196,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--candidate-a", type=parse_candidate, required=True)
     parser.add_argument("--candidate-b", type=parse_candidate, required=True)
-    parser.add_argument("--test-root", type=Path, default=Path("data/test"))
+    parser.add_argument("--test-root", type=Path, required=True)
     parser.add_argument(
         "--confidence-dir",
         default="prior_mask2former_large_ft_cc_submission_conf",

@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument("--day-dir", required=True)
     parser.add_argument("--night-dir", required=True)
     parser.add_argument("--real-dir", required=True)
-    parser.add_argument("--test-root", default="data/test")
+    parser.add_argument("--test-root", required=True)
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--zip", required=True)
     parser.add_argument("--overwrite", action="store_true")

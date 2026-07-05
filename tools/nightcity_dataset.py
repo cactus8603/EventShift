@@ -19,7 +19,6 @@ def _eventshift_root():
 ROOT = _eventshift_root()
 DEFAULT_NIGHTCITY_ROOTS = (
     Path(os.environ.get("NIGHTCITY_ROOT", "")),
-    Path("/work/u1621738/ebmv_eccv/MambaSeg/data/nightcity"),
     ROOT / "data" / "nightcity",
 )
 
