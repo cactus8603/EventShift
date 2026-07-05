@@ -6,6 +6,8 @@ __pycache__/
 # Native build artifacts
 *.so
 *.o
+*.d
+*.ninja
 *.egg
 *.egg-info/
 build/
@@ -30,6 +32,15 @@ checkpoints/*
 !checkpoints/README.md
 submit/*.zip
 !submit/README.md
+
+# Generated prediction / rebuild artifact types
+outputs/**/*.png
+outputs/**/*.json
+outputs/**/*.txt
+outputs/**/*.zip
+artifacts/**/*.json
+artifacts/**/*.txt
+artifacts/**/*.zip
 
 # Logs and temporary files
 *.log
