@@ -2,6 +2,7 @@
 import datetime
 import json
 import logging
+import math
 import os
 import time
 from collections import defaultdict
@@ -102,6 +103,12 @@ class JSONWriter(EventWriter):
         self._window_size = window_size
         self._last_write = -1
 
+    @staticmethod
+    def _json_sanitize(value):
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
+        return value
+
     def write(self):
         storage = get_event_storage()
         to_save = defaultdict(dict)
@@ -110,14 +117,14 @@ class JSONWriter(EventWriter):
             # keep scalars that have not been written
             if iter <= self._last_write:
                 continue
-            to_save[iter][k] = v
+            to_save[iter][k] = self._json_sanitize(v)
         if len(to_save):
             all_iters = sorted(to_save.keys())
             self._last_write = max(all_iters)
 
         for itr, scalars_per_iter in to_save.items():
             scalars_per_iter["iteration"] = itr
-            self._file_handle.write(json.dumps(scalars_per_iter, sort_keys=True) + "\n")
+            self._file_handle.write(json.dumps(scalars_per_iter, sort_keys=True, allow_nan=False) + "\n")
         self._file_handle.flush()
         try:
             os.fsync(self._file_handle.fileno())

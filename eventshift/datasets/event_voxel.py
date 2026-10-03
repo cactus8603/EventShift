@@ -71,7 +71,7 @@ def _event_slice(h5_file: h5py.File, time_window) -> dict[str, np.ndarray] | Non
     if right <= left:
         return None
 
-    timestamps = np.asarray(group["t"][left:right])
+    timestamps = np.asarray(group["t"][left:right], dtype=np.int64)
     keep = (timestamps >= query_start_us) & (timestamps < query_end_us)
     if not np.any(keep):
         return None
@@ -79,7 +79,7 @@ def _event_slice(h5_file: h5py.File, time_window) -> dict[str, np.ndarray] | Non
     return {
         "x": np.asarray(group["x"][left:right])[keep].astype(np.int64),
         "y": np.asarray(group["y"][left:right])[keep].astype(np.int64),
-        "t": (timestamps[keep] + t_offset).astype(np.float32),
+        "t": (timestamps[keep].astype(np.float64) + float(t_offset)).astype(np.float32),
         "p": np.asarray(group["p"][left:right])[keep].astype(np.int64),
     }
 

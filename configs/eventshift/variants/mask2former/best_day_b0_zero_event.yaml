@@ -1,0 +1,16 @@
+project:
+  name: EventShift-Best-Day-B0-ZeroEvent
+
+data:
+  test_root: ${TEST_ROOT:-/data/cosec/test}
+
+model:
+  name: best_day_b0_zero_event
+  backend_config: ${EVENTSHIFT_ROOT:-.}/configs/selected/best_day_b0_zero_event.yaml
+
+checkpoints:
+  init_weights: ${EVENTSHIFT_ROOT:-.}/checkpoints/best_day_b0_zero_event.pth
+
+inference:
+  output_dir: ${EVENTSHIFT_ROOT:-.}/outputs/best_day_b0_zero_event
+  progress_desc: best_day_b0_zero_event

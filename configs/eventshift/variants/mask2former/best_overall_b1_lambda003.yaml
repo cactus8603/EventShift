@@ -1,0 +1,16 @@
+project:
+  name: EventShift-Best-Overall-B1-Lambda003
+
+data:
+  test_root: ${TEST_ROOT:-/data/cosec/test}
+
+model:
+  name: best_overall_b1_lambda003
+  backend_config: ${EVENTSHIFT_ROOT:-.}/configs/selected/best_overall_b1_lambda003.yaml
+
+checkpoints:
+  init_weights: ${EVENTSHIFT_ROOT:-.}/checkpoints/best_overall_b1_lambda003.pth
+
+inference:
+  output_dir: ${EVENTSHIFT_ROOT:-.}/outputs/best_overall_b1_lambda003
+  progress_desc: best_overall_b1_lambda003

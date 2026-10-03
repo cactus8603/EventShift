@@ -23,6 +23,7 @@ def add_maskformer2_config(cfg):
     # provides event_h5/event_old/event_new and MODEL.EVENT_FUSION is enabled.
     cfg.INPUT.EVENT = CN()
     cfg.INPUT.EVENT.NUM_BINS = 5
+    cfg.INPUT.EVENT.TEMPORAL_MODE = "bidir"
     cfg.INPUT.EVENT.SUPPORT_PERCENTILE = 50.0
     cfg.INPUT.EVENT.TEMPORAL_THRESHOLD = 0.05
     cfg.INPUT.EVENT.SUPPORT_DILATION = 1
@@ -30,7 +31,10 @@ def add_maskformer2_config(cfg):
     cfg.INPUT.EVENT.BIN_DROPOUT_PROB = 0.10
     cfg.INPUT.EVENT.EDGE_DROPOUT_PROB = 0.0
     cfg.INPUT.EVENT.ZERO_EVENT = False
+    cfg.INPUT.EVENT.CONCAT_TO_IMAGE = False
+    cfg.INPUT.EVENT.CONCAT_CHANNELS = 10
     cfg.INPUT.EVENT.EDGE_WINDOW_RADII_MS = []
+    cfg.INPUT.EVENT.EDGE_REPRESENTATION = "legacy"
     cfg.INPUT.EVENT.BOUNDARY_RADII = []
 
     # solver config
@@ -39,10 +43,17 @@ def add_maskformer2_config(cfg):
     # optimizer
     cfg.SOLVER.OPTIMIZER = "ADAMW"
     cfg.SOLVER.BACKBONE_MULTIPLIER = 0.1
+    # Optional per-prefix LR multipliers, e.g. ["event_fusion.:1.0",
+    # "sem_seg_head.:0.03"]. These override BACKBONE_MULTIPLIER for matching
+    # parameters and are used for stability-sensitive Stage-2 finetuning.
+    cfg.SOLVER.PREFIX_LR_MULTIPLIERS = []
 
     # Generic fine-tuning control. When non-empty, the trainer freezes the
     # whole model and only enables parameters whose names start with a prefix.
     cfg.MODEL.TRAINABLE_PREFIXES = []
+    # Initialize an 11-class DSEC-Semantic head from a 19-class checkpoint by
+    # averaging/remapping the Mask2Former classification embedding rows.
+    cfg.MODEL.INIT_DSEC11_HEAD_FROM_DSEC19 = False
 
     # mask_former model config
     cfg.MODEL.MASK_FORMER = CN()
@@ -85,6 +96,7 @@ def add_maskformer2_config(cfg):
     # unchanged; event modules learn through the segmentation objective.
     cfg.MODEL.EVENT_FUSION = CN()
     cfg.MODEL.EVENT_FUSION.ENABLED = False
+    cfg.MODEL.EVENT_FUSION.MODE = "alpha_gate"
     cfg.MODEL.EVENT_FUSION.IN_CHANNELS = 10
     cfg.MODEL.EVENT_FUSION.STAT_CHANNELS = 4
     cfg.MODEL.EVENT_FUSION.STAGES = ["res3", "res4"]
@@ -97,10 +109,55 @@ def add_maskformer2_config(cfg):
     cfg.MODEL.EVENT_FUSION.RELIABILITY_POLARITY_POWER = 0.25
     cfg.MODEL.EVENT_FUSION.RELIABILITY_FLOOR = 1.0
     cfg.MODEL.EVENT_FUSION.RELIABILITY_GAIN = 0.0
+    # Extra gate controls for event-parameter search. Defaults preserve the
+    # historical EventFusion behavior; search configs can raise the effective
+    # event correction without changing the module shape.
+    cfg.MODEL.EVENT_FUSION.GATE_SCALE = 1.0
+    cfg.MODEL.EVENT_FUSION.GATE_FLOOR = 0.0
+    cfg.MODEL.EVENT_FUSION.GATE_MAX = 1.0
+    cfg.MODEL.EVENT_FUSION.LOW_LIGHT_GATE_ENABLED = False
+    cfg.MODEL.EVENT_FUSION.LOW_LIGHT_GATE_FLOOR = 1.0
+    cfg.MODEL.EVENT_FUSION.LOW_LIGHT_GATE_GAIN = 0.0
+    cfg.MODEL.EVENT_FUSION.LOW_LIGHT_GATE_MAX = 2.0
+    cfg.MODEL.EVENT_FUSION.LOW_LIGHT_LUMA_THRESHOLD = 0.35
+    cfg.MODEL.EVENT_FUSION.LOW_LIGHT_CONTRAST_THRESHOLD = 0.08
     cfg.MODEL.EVENT_FUSION.GATE_SPARSITY_WEIGHT = 0.0
     cfg.MODEL.EVENT_FUSION.GATE_INVALID_WEIGHT = 0.0
     cfg.MODEL.EVENT_FUSION.LOG_GATE_STATS = True
     cfg.MODEL.EVENT_FUSION.TRAIN_ONLY_EVENT = False
+    # Budgeted residual mode. This keeps the event branch under event_fusion.*
+    # but changes the residual formula from multiplicative alpha-gating to an
+    # explicit feature-update budget.
+    cfg.MODEL.EVENT_FUSION.BUDGET_LAMBDA_MAX = 0.03
+    cfg.MODEL.EVENT_FUSION.BUDGET_LAMBDA_FLOOR = 0.20
+    cfg.MODEL.EVENT_FUSION.BUDGET_WARMUP_ITERS = 1000
+    cfg.MODEL.EVENT_FUSION.BUDGET_R_MAX = 0.08
+    cfg.MODEL.EVENT_FUSION.BUDGET_M_MAX = 3.0
+    cfg.MODEL.EVENT_FUSION.BUDGET_ALLOCATOR_BIAS = 0.0
+    cfg.MODEL.EVENT_FUSION.BUDGET_USE_LOW_LIGHT = False
+    cfg.MODEL.EVENT_FUSION.BUDGET_LOW_LIGHT_BIAS = -2.0
+    cfg.MODEL.EVENT_FUSION.BUDGET_LOW_LIGHT_GAIN = 4.0
+    cfg.MODEL.EVENT_FUSION.BUDGET_USE_UNCERTAINTY = False
+    cfg.MODEL.EVENT_FUSION.BUDGET_UNCERTAINTY_BIAS = -2.0
+    cfg.MODEL.EVENT_FUSION.BUDGET_UNCERTAINTY_GAIN = 4.0
+    cfg.MODEL.EVENT_FUSION.BUDGET_USE_RELIABILITY_BIAS = False
+    cfg.MODEL.EVENT_FUSION.BUDGET_RELIABILITY_BETA = 1.0
+    cfg.MODEL.EVENT_FUSION.BUDGET_RELIABILITY_BIAS_SOURCE = "event_stats"
+    cfg.MODEL.EVENT_FUSION.BUDGET_USE_SUPPORT_BIAS = False
+    cfg.MODEL.EVENT_FUSION.BUDGET_SUPPORT_BETA = 0.5
+    cfg.MODEL.EVENT_FUSION.BUDGET_SUPPORT_BIAS_SOURCE = "event_stats"
+    cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_BIAS_REDUCTION = "max"
+    cfg.MODEL.EVENT_FUSION.BUDGET_USE_STRUCTURAL_PRIOR = False
+    cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_RELIABILITY_AWARE = False
+    cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_RELIABILITY_AWARE_MODE = "v1"
+    cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_GLOBAL_TRUST = False
+    cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_GLOBAL_FLOOR = 0.30
+    cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_GLOBAL_REDUCTION = "mean"
+    cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_GLOBAL_TOPK_FRACTION = 0.10
+    cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_BETA = 0.5
+    cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_CHANNELS = 0
+    cfg.MODEL.EVENT_FUSION.BUDGET_LOG_UPDATE_STATS = True
+    cfg.MODEL.EVENT_FUSION.BUDGET_UPDATE_STATS_INTERVAL = 100
 
     # Event edge-semantic pretraining/refinement branch. Defaults are disabled
     # so existing RGB-only and event-fusion configs keep their behavior.
@@ -284,6 +341,7 @@ def add_maskformer2_config(cfg):
     cfg.MODEL.SWIN = CN()
     cfg.MODEL.SWIN.PRETRAIN_IMG_SIZE = 224
     cfg.MODEL.SWIN.PATCH_SIZE = 4
+    cfg.MODEL.SWIN.IN_CHANS = 3
     cfg.MODEL.SWIN.EMBED_DIM = 96
     cfg.MODEL.SWIN.DEPTHS = [2, 2, 6, 2]
     cfg.MODEL.SWIN.NUM_HEADS = [3, 6, 12, 24]

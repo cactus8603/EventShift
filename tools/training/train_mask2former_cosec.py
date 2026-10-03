@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 import json
+import math
 import os
 import shutil
 import sys
+import weakref
 import importlib.util
 from collections import OrderedDict
 from datetime import datetime
@@ -10,7 +12,32 @@ from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
+
+# NumPy>=2 removed aliases that the vendored Detectron2 stack still uses.
+for _np_name, _np_value in {"bool": bool, "int": int, "float": float, "str": str, "object": object}.items():
+    if not hasattr(np, _np_name):
+        setattr(np, _np_name, _np_value)
+
+import torch
 from PIL import Image
+
+# Pillow>=10 removed a few legacy constants that vendored Detectron2 still
+# references during import.
+if not hasattr(Image, "LINEAR"):
+    Image.LINEAR = Image.BILINEAR
+if not hasattr(Image, "CUBIC"):
+    Image.CUBIC = Image.BICUBIC
+if not hasattr(Image, "ANTIALIAS"):
+    Image.ANTIALIAS = Image.LANCZOS
+
+# Local experiment checkpoints are trusted artifacts produced by this repo.
+# PyTorch>=2.6 defaults torch.load(weights_only=True), which rejects older
+# Detectron2 checkpoints containing numpy scalar metadata.
+_TORCH_LOAD = torch.load
+def _torch_load_legacy_default(*args, **kwargs):
+    kwargs.setdefault("weights_only", False)
+    return _TORCH_LOAD(*args, **kwargs)
+torch.load = _torch_load_legacy_default
 
 def _eventshift_root():
     for parent in Path(__file__).resolve().parents:
@@ -45,6 +72,9 @@ from cosec_finetune_splits import (  # noqa: E402
 )
 from cosec_event_dataset import load_cosec_event_dicts  # noqa: E402
 from dsec19_filtered_dataset import (  # noqa: E402
+    DSEC11_CLASSES,
+    DSEC11_PALETTE,
+    DSEC19_TO_DSEC11,
     load_dsec19_close180_dicts,
     load_dsec19_close240_dicts,
     load_dsec19_filtered_event_dicts,
@@ -54,6 +84,57 @@ from dsec19_filtered_dataset import (  # noqa: E402
     load_dsec19_train_split_event_dicts,
     load_dsec19_val_dicts,
     load_dsec19_val_event_dicts,
+    load_dsec19_external_full_val_dicts,
+    load_dsec19_external_full_val_event_dicts,
+    load_dsec19_external_brenet_val_dicts,
+    load_dsec19_external_brenet_val_event_dicts,
+    load_dsec19_external_mambaseg_val_dicts,
+    load_dsec19_external_mambaseg_val_event_dicts,
+    load_dsec19_external_common_val_dicts,
+    load_dsec19_external_common_val_event_dicts,
+    load_dsec19_val_lowlight_q25_dicts,
+    load_dsec19_val_lowlight_q25_event_dicts,
+    load_dsec19_val_remaining_q75_dicts,
+    load_dsec19_val_remaining_q75_event_dicts,
+    load_dsec_brenet11_train_full_dicts,
+    load_dsec_brenet11_train_full_event_dicts,
+    load_dsec_brenet11_train_split_dicts,
+    load_dsec_brenet11_train_split_event_dicts,
+    load_dsec_brenet11_val_dicts,
+    load_dsec_brenet11_val_event_dicts,
+    load_dsec_brenet11_test_dicts,
+    load_dsec_brenet11_test_event_dicts,
+    load_dsec11_train_full_dicts,
+    load_dsec11_train_full_event_dicts,
+    load_dsec11_train_split_dicts,
+    load_dsec11_train_split_event_dicts,
+    load_dsec11_val_dicts,
+    load_dsec11_val_event_dicts,
+    load_dsec11_external_full_val_dicts,
+    load_dsec11_external_full_val_event_dicts,
+    load_dsec11_external_brenet_val_dicts,
+    load_dsec11_external_brenet_val_event_dicts,
+    load_dsec11_external_mambaseg_val_dicts,
+    load_dsec11_external_mambaseg_val_event_dicts,
+    load_dsec11_external_common_val_dicts,
+    load_dsec11_external_common_val_event_dicts,
+    load_dsec11_val_lowlight_q25_dicts,
+    load_dsec11_val_lowlight_q25_event_dicts,
+    load_dsec11_val_remaining_q75_dicts,
+    load_dsec11_val_remaining_q75_event_dicts,
+)
+from ddd17_dataset import (  # noqa: E402
+    DDD17_CLASSES,
+    DDD17_PALETTE,
+    ddd17_root,
+    load_ddd17_dir5_dicts,
+    load_ddd17_dir5_event_dicts,
+    load_ddd17_full_labeled_dicts,
+    load_ddd17_full_labeled_event_dicts,
+    load_ddd17_train_dicts,
+    load_ddd17_train_event_dicts,
+    load_ddd17_val_dicts,
+    load_ddd17_val_event_dicts,
 )
 from nightcity_dataset import (  # noqa: E402
     load_nightcity_cosec_classdist_dicts,
@@ -71,8 +152,10 @@ from pseudo_dataset import (  # noqa: E402
 from detectron2.checkpoint import DetectionCheckpointer  # noqa: E402
 from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader  # noqa: E402
 from detectron2.engine import default_argument_parser, hooks, launch  # noqa: E402
+from detectron2.evaluation import SemSegEvaluator  # noqa: E402
 from detectron2.utils import comm  # noqa: E402
 from detectron2.utils.events import CommonMetricPrinter, JSONWriter  # noqa: E402
+from detectron2.utils.file_io import PathManager  # noqa: E402
 from mask2former import MaskFormerSemanticDatasetMapper  # noqa: E402
 
 from train_net import Trainer as Mask2FormerTrainer  # noqa: E402
@@ -195,13 +278,38 @@ def backup_runtime_code(output_dir, args=None):
     return snapshot_dir
 
 
+
+def _json_sanitize(value):
+    if isinstance(value, np.generic):
+        value = value.item()
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {str(key): _json_sanitize(child) for key, child in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_sanitize(child) for child in value]
+    return value
+
+
+def write_eval_results(output_dir, results):
+    os.makedirs(output_dir, exist_ok=True)
+    record = _json_sanitize(results)
+    with open(os.path.join(output_dir, "eval_results.json"), "w", encoding="utf-8") as f:
+        json.dump(record, f, indent=2, sort_keys=True, allow_nan=False)
+        f.write("\n")
+    metrics_record = dict(record) if isinstance(record, dict) else {"eval_results": record}
+    metrics_record["eval_only"] = True
+    with open(os.path.join(output_dir, "metrics.json"), "a", encoding="utf-8") as f:
+        json.dump(metrics_record, f, sort_keys=True, allow_nan=False)
+        f.write("\n")
+
 def should_skip_code_backup():
     return os.environ.get("SKIP_CODE_BACKUP", "").lower() in {"1", "true", "yes", "y"}
 
 
 def load_cosec_dicts(split):
     records = []
-    cosec_root = Path(os.environ.get("COSEC_ROOT", ROOT / "data" / "train")).expanduser()
+    cosec_root = Path(os.environ.get("COSEC_ROOT", "/data/cosec/train")).expanduser()
     for idx, (seq_name, frame_id, img_path, label_path) in enumerate(iter_cosec_samples(cosec_root, split)):
         records.append(
             {
@@ -371,6 +479,21 @@ def register_cosec():
             evaluator_type="sem_seg",
             ignore_label=255,
         )
+        split_parts = split.split("_", 1)
+        if len(split_parts) == 2 and split_parts[0] in {"train", "val"}:
+            alias_split = f"{split_parts[1]}_{split_parts[0]}"
+            alias_name = f"cosec_{alias_split}{'_event' if name.endswith('_event') else ''}"
+            if alias_name not in DatasetCatalog.list():
+                if alias_name.endswith("_event"):
+                    DatasetCatalog.register(alias_name, lambda split=split: load_cosec_event_dicts(split))
+                else:
+                    DatasetCatalog.register(alias_name, lambda split=split: load_cosec_dicts(split))
+            MetadataCatalog.get(alias_name).set(
+                stuff_classes=list(CLASSES),
+                stuff_colors=[list(color) for color in PALETTE],
+                evaluator_type="sem_seg",
+                ignore_label=255,
+            )
 
     for name, loader in [
         ("cosec_train_night_focus_day700", load_cosec_train_night_focus_day700_dicts),
@@ -385,6 +508,18 @@ def register_cosec():
         ("dsec19_train_noval_event", load_dsec19_train_split_event_dicts),
         ("dsec19_val", load_dsec19_val_dicts),
         ("dsec19_val_event", load_dsec19_val_event_dicts),
+        ("dsec19_external_full_val", load_dsec19_external_full_val_dicts),
+        ("dsec19_external_full_val_event", load_dsec19_external_full_val_event_dicts),
+        ("dsec19_external_brenet_val", load_dsec19_external_brenet_val_dicts),
+        ("dsec19_external_brenet_val_event", load_dsec19_external_brenet_val_event_dicts),
+        ("dsec19_external_mambaseg_val", load_dsec19_external_mambaseg_val_dicts),
+        ("dsec19_external_mambaseg_val_event", load_dsec19_external_mambaseg_val_event_dicts),
+        ("dsec19_external_common_val", load_dsec19_external_common_val_dicts),
+        ("dsec19_external_common_val_event", load_dsec19_external_common_val_event_dicts),
+        ("dsec19_val_lowlight_q25", load_dsec19_val_lowlight_q25_dicts),
+        ("dsec19_val_lowlight_q25_event", load_dsec19_val_lowlight_q25_event_dicts),
+        ("dsec19_val_remaining_q75", load_dsec19_val_remaining_q75_dicts),
+        ("dsec19_val_remaining_q75_event", load_dsec19_val_remaining_q75_event_dicts),
         ("dsec19_train_close180", load_dsec19_close180_dicts),
         ("dsec19_train_close240", load_dsec19_close240_dicts),
         *(
@@ -655,6 +790,109 @@ def register_cosec():
             ignore_label=255,
         )
 
+    dsec11_specs = [
+        ("dsec11_train_full", load_dsec11_train_full_dicts, "sem_seg"),
+        ("dsec11_train_full_event", load_dsec11_train_full_event_dicts, "sem_seg"),
+        ("dsec11_train_noval", load_dsec11_train_split_dicts, "sem_seg"),
+        ("dsec11_train_noval_event", load_dsec11_train_split_event_dicts, "sem_seg"),
+        ("dsec11_val", load_dsec11_val_dicts, "sem_seg"),
+        ("dsec11_val_event", load_dsec11_val_event_dicts, "sem_seg"),
+        ("dsec11_external_full_val", load_dsec11_external_full_val_dicts, "sem_seg"),
+        ("dsec11_external_full_val_event", load_dsec11_external_full_val_event_dicts, "sem_seg"),
+        ("dsec11_external_brenet_val", load_dsec11_external_brenet_val_dicts, "sem_seg"),
+        ("dsec11_external_brenet_val_event", load_dsec11_external_brenet_val_event_dicts, "sem_seg"),
+        ("dsec11_external_mambaseg_val", load_dsec11_external_mambaseg_val_dicts, "sem_seg"),
+        ("dsec11_external_mambaseg_val_event", load_dsec11_external_mambaseg_val_event_dicts, "sem_seg"),
+        ("dsec11_external_common_val", load_dsec11_external_common_val_dicts, "sem_seg"),
+        ("dsec11_external_common_val_event", load_dsec11_external_common_val_event_dicts, "sem_seg"),
+        ("dsec11_val_lowlight_q25", load_dsec11_val_lowlight_q25_dicts, "sem_seg"),
+        ("dsec11_val_lowlight_q25_event", load_dsec11_val_lowlight_q25_event_dicts, "sem_seg"),
+        ("dsec11_val_remaining_q75", load_dsec11_val_remaining_q75_dicts, "sem_seg"),
+        ("dsec11_val_remaining_q75_event", load_dsec11_val_remaining_q75_event_dicts, "sem_seg"),
+        ("dsec11_val_from_dsec19", load_dsec11_val_dicts, "sem_seg_dsec19_to_dsec11"),
+        ("dsec11_val_event_from_dsec19", load_dsec11_val_event_dicts, "sem_seg_dsec19_to_dsec11"),
+        ("dsec11_external_full_val_from_dsec19", load_dsec11_external_full_val_dicts, "sem_seg_dsec19_to_dsec11"),
+        ("dsec11_external_full_val_event_from_dsec19", load_dsec11_external_full_val_event_dicts, "sem_seg_dsec19_to_dsec11"),
+        ("dsec11_external_brenet_val_from_dsec19", load_dsec11_external_brenet_val_dicts, "sem_seg_dsec19_to_dsec11"),
+        ("dsec11_external_brenet_val_event_from_dsec19", load_dsec11_external_brenet_val_event_dicts, "sem_seg_dsec19_to_dsec11"),
+        ("dsec11_external_mambaseg_val_from_dsec19", load_dsec11_external_mambaseg_val_dicts, "sem_seg_dsec19_to_dsec11"),
+        ("dsec11_external_mambaseg_val_event_from_dsec19", load_dsec11_external_mambaseg_val_event_dicts, "sem_seg_dsec19_to_dsec11"),
+        ("dsec11_external_common_val_from_dsec19", load_dsec11_external_common_val_dicts, "sem_seg_dsec19_to_dsec11"),
+        ("dsec11_external_common_val_event_from_dsec19", load_dsec11_external_common_val_event_dicts, "sem_seg_dsec19_to_dsec11"),
+        (
+            "dsec11_val_lowlight_q25_from_dsec19",
+            load_dsec11_val_lowlight_q25_dicts,
+            "sem_seg_dsec19_to_dsec11",
+        ),
+        (
+            "dsec11_val_lowlight_q25_event_from_dsec19",
+            load_dsec11_val_lowlight_q25_event_dicts,
+            "sem_seg_dsec19_to_dsec11",
+        ),
+        (
+            "dsec11_val_remaining_q75_from_dsec19",
+            load_dsec11_val_remaining_q75_dicts,
+            "sem_seg_dsec19_to_dsec11",
+        ),
+        (
+            "dsec11_val_remaining_q75_event_from_dsec19",
+            load_dsec11_val_remaining_q75_event_dicts,
+            "sem_seg_dsec19_to_dsec11",
+        ),
+    ]
+    for name, loader, evaluator_type in dsec11_specs:
+        if name not in DatasetCatalog.list():
+            DatasetCatalog.register(name, loader)
+        MetadataCatalog.get(name).set(
+            stuff_classes=list(DSEC11_CLASSES),
+            stuff_colors=[list(color) for color in DSEC11_PALETTE],
+            evaluator_type=evaluator_type,
+            ignore_label=255,
+            dsec19_to_dsec11=list(DSEC19_TO_DSEC11),
+            dsec19_classes=list(CLASSES),
+        )
+
+    dsec_brenet11_specs = [
+        ("dsec_brenet11_train_full", load_dsec_brenet11_train_full_dicts, "sem_seg"),
+        ("dsec_brenet11_train_full_event", load_dsec_brenet11_train_full_event_dicts, "sem_seg"),
+        ("dsec_brenet11_train_noval", load_dsec_brenet11_train_split_dicts, "sem_seg"),
+        ("dsec_brenet11_train_noval_event", load_dsec_brenet11_train_split_event_dicts, "sem_seg"),
+        ("dsec_brenet11_val", load_dsec_brenet11_val_dicts, "sem_seg"),
+        ("dsec_brenet11_val_event", load_dsec_brenet11_val_event_dicts, "sem_seg"),
+        ("dsec_brenet11_test", load_dsec_brenet11_test_dicts, "sem_seg"),
+        ("dsec_brenet11_test_event", load_dsec_brenet11_test_event_dicts, "sem_seg"),
+    ]
+    for name, loader, evaluator_type in dsec_brenet11_specs:
+        if name not in DatasetCatalog.list():
+            DatasetCatalog.register(name, loader)
+        MetadataCatalog.get(name).set(
+            stuff_classes=list(DSEC11_CLASSES),
+            stuff_colors=[list(color) for color in DSEC11_PALETTE],
+            evaluator_type=evaluator_type,
+            ignore_label=255,
+            dsec19_to_dsec11=list(DSEC19_TO_DSEC11),
+            dsec19_classes=list(CLASSES),
+        )
+
+    for name, loader in [
+        ("ddd17_train", load_ddd17_train_dicts),
+        ("ddd17_train_event", load_ddd17_train_event_dicts),
+        ("ddd17_val", load_ddd17_val_dicts),
+        ("ddd17_val_event", load_ddd17_val_event_dicts),
+        ("ddd17_full_labeled", load_ddd17_full_labeled_dicts),
+        ("ddd17_full_labeled_event", load_ddd17_full_labeled_event_dicts),
+        ("ddd17_dir5_labeled", load_ddd17_dir5_dicts),
+        ("ddd17_dir5_labeled_event", load_ddd17_dir5_event_dicts),
+    ]:
+        if name not in DatasetCatalog.list():
+            DatasetCatalog.register(name, loader)
+        MetadataCatalog.get(name).set(
+            stuff_classes=list(DDD17_CLASSES),
+            stuff_colors=[list(color) for color in DDD17_PALETTE],
+            evaluator_type="sem_seg",
+            ignore_label=255,
+        )
+
     for prefix in discover_acdc_file_split_prefixes():
         split_specs = [
             (f"acdc_{prefix}_train", lambda prefix=prefix: load_acdc_file_split_dicts(prefix, "train", "all")),
@@ -702,6 +940,10 @@ def register_cosec():
             print(f"[nightcity] root: {nightcity_root()}", flush=True)
         except FileNotFoundError as error:
             print(f"[nightcity] not registered from disk yet: {error}", flush=True)
+        try:
+            print(f"[ddd17] root: {ddd17_root()}", flush=True)
+        except FileNotFoundError as error:
+            print(f"[ddd17] not registered from disk yet: {error}", flush=True)
 
 
 def _kfold_validation_target(dataset_name):
@@ -752,27 +994,179 @@ def _parse_best_checkpoint_min_miou(raw_thresholds):
 
 
 def _dataset_matches_best_tag(tag, dataset_name):
+    base_name = dataset_name[: -len("_event")] if dataset_name.endswith("_event") else dataset_name
     if tag == "day":
-        return dataset_name.startswith("cosec_") and dataset_name.endswith("_day_val")
+        return base_name.startswith("cosec_") and base_name.endswith("_day_val")
     if tag == "night":
-        return dataset_name.startswith("cosec_") and dataset_name.endswith("_night_val")
+        return base_name.startswith("cosec_") and base_name.endswith("_night_val")
+    if tag == "overall":
+        return (
+            base_name.startswith("cosec_")
+            and base_name.endswith("_val")
+            and not base_name.endswith("_day_val")
+            and not base_name.endswith("_night_val")
+        )
     if tag in {"acdc", "acdc_all"}:
-        return dataset_name.startswith("acdc_") and dataset_name.endswith("_all_val")
+        return base_name.startswith("acdc_") and base_name.endswith("_all_val")
     if tag == "acdc_night":
-        return dataset_name.startswith("acdc_") and dataset_name.endswith("_night_val")
+        return base_name.startswith("acdc_") and base_name.endswith("_night_val")
     if tag == "dsec19":
-        return dataset_name in {"dsec19_val", "dsec19_val_event"}
+        return dataset_name in {
+            "dsec19_val",
+            "dsec19_val_event",
+            "dsec19_external_full_val",
+            "dsec19_external_full_val_event",
+        }
+    if tag == "dsec11":
+        return dataset_name in {
+            "dsec11_val",
+            "dsec11_val_event",
+            "dsec11_external_common_val",
+            "dsec11_external_common_val_event",
+            "dsec_brenet11_val",
+            "dsec_brenet11_val_event",
+        }
+    if tag == "ddd17":
+        return dataset_name in {"ddd17_val", "ddd17_val_event"}
     return False
+
+
+class CoSECDetectionCheckpointer(DetectionCheckpointer):
+    def __init__(self, *args, input_concat_channels=None, init_dsec11_head_from_dsec19=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.input_concat_channels = input_concat_channels
+        self.init_dsec11_head_from_dsec19 = bool(init_dsec11_head_from_dsec19)
+
+    def _load_model(self, checkpoint):
+        if self.input_concat_channels:
+            self._expand_input_concat_patch_embed(checkpoint)
+        if self.init_dsec11_head_from_dsec19:
+            self._remap_dsec19_class_embed_to_dsec11(checkpoint)
+        return super()._load_model(checkpoint)
+
+    @staticmethod
+    def _remap_class_embed_tensor(source, target_shape):
+        source_class_count = len(DSEC19_TO_DSEC11)
+        target_class_count = len(DSEC11_CLASSES)
+        if int(source.shape[0]) != source_class_count + 1:
+            return None
+        if int(target_shape[0]) != target_class_count + 1:
+            return None
+        if tuple(source.shape[1:]) != tuple(target_shape[1:]):
+            return None
+        if torch.is_tensor(source):
+            target = source.new_zeros(tuple(target_shape))
+            mean_kwargs = {"dim": 0}
+        else:
+            source = np.asarray(source)
+            target = np.zeros(tuple(target_shape), dtype=source.dtype)
+            mean_kwargs = {"axis": 0}
+        for target_id in range(target_class_count):
+            source_ids = [
+                source_id
+                for source_id, mapped_id in enumerate(DSEC19_TO_DSEC11)
+                if int(mapped_id) == target_id
+            ]
+            if source_ids:
+                target[target_id] = source[source_ids].mean(**mean_kwargs)
+        target[target_class_count] = source[source_class_count]
+        return target
+
+    def _target_state_key(self, ckpt_key, current_state):
+        if ckpt_key in current_state:
+            return ckpt_key
+        if ckpt_key.startswith("module.") and ckpt_key[len("module.") :] in current_state:
+            return ckpt_key[len("module.") :]
+        module_key = f"module.{ckpt_key}"
+        if module_key in current_state:
+            return module_key
+        return None
+
+    def _remap_dsec19_class_embed_to_dsec11(self, checkpoint):
+        model_state = checkpoint.get("model")
+        if not isinstance(model_state, dict):
+            return
+        current_state = self.model.state_dict()
+        remapped = []
+        for ckpt_key, source in list(model_state.items()):
+            if not (ckpt_key.endswith("class_embed.weight") or ckpt_key.endswith("class_embed.bias")):
+                continue
+            if not hasattr(source, "shape"):
+                continue
+            target_key = self._target_state_key(ckpt_key, current_state)
+            if target_key is None:
+                continue
+            target = current_state[target_key]
+            remapped_tensor = self._remap_class_embed_tensor(source, target.shape)
+            if remapped_tensor is None:
+                continue
+            if torch.is_tensor(remapped_tensor):
+                remapped_tensor = remapped_tensor.cpu()
+            model_state[ckpt_key] = remapped_tensor
+            remapped.append(f"{ckpt_key}:{tuple(source.shape)}->{tuple(remapped_tensor.shape)}")
+        if comm.is_main_process():
+            if remapped:
+                print("[dsec11_init] remapped DSEC19 class_embed rows: " + ", ".join(remapped), flush=True)
+            else:
+                print("[dsec11_init] no compatible DSEC19 class_embed tensors found to remap", flush=True)
+
+    def _expand_input_concat_patch_embed(self, checkpoint):
+        model_state = checkpoint.get("model")
+        if not isinstance(model_state, dict):
+            return
+        current_state = self.model.state_dict()
+        key_pairs = [
+            ("backbone.patch_embed.proj.weight", "backbone.patch_embed.proj.weight"),
+            ("backbone.bottom_up.patch_embed.proj.weight", "backbone.bottom_up.patch_embed.proj.weight"),
+            ("module.backbone.patch_embed.proj.weight", "module.backbone.patch_embed.proj.weight"),
+        ]
+        for ckpt_key, model_key in key_pairs:
+            if ckpt_key not in model_state:
+                continue
+            target = current_state.get(model_key)
+            source = model_state[ckpt_key]
+            if target is None or not hasattr(source, "shape"):
+                continue
+            if len(source.shape) != 4 or len(target.shape) != 4:
+                continue
+            if source.shape[1] == target.shape[1] or source.shape[1] != 3 or target.shape[1] <= 3:
+                continue
+            expanded = target.new_zeros(target.shape)
+            expanded[:, :3, :, :] = source.to(dtype=expanded.dtype)
+            model_state[ckpt_key] = expanded.cpu()
+            if comm.is_main_process():
+                print(
+                    f"[input_concat] expanded {ckpt_key} from {tuple(source.shape)} "
+                    f"to {tuple(expanded.shape)}; event channels zero-initialized",
+                    flush=True,
+                )
+            return
 
 
 class BestValidationCheckpointer(hooks.HookBase):
     DEFAULT_TARGETS = (
         ("day", ("cosec_day_val_event", "cosec_day_val"), "best_model_cosec_day"),
         ("night", ("cosec_night_val_event", "cosec_night_val"), "best_model_cosec_night"),
+        (
+            "overall",
+            (
+                "cosec_seqday_nightchunk15_val_event",
+                "cosec_seqday_nightchunk15_val",
+                "cosec_val_event",
+                "cosec_val",
+            ),
+            "best_model_cosec_overall",
+        ),
         ("acdc", ("acdc_all_val",), "best_model_acdc"),
         ("acdc_all", ("acdc_all_val",), "best_model_acdc_all"),
         ("acdc_night", ("acdc_night_val",), "best_model_acdc_night"),
         ("dsec19", ("dsec19_val_event", "dsec19_val"), "best_model_dsec19"),
+        (
+            "dsec11",
+            ("dsec_brenet11_val_event", "dsec_brenet11_val", "dsec11_val_event", "dsec11_val"),
+            "best_model_dsec11",
+        ),
+        ("ddd17", ("ddd17_val_event", "ddd17_val"), "best_model_ddd17"),
     )
 
     def __init__(self, output_dir=None, dataset_names=(), min_miou_thresholds=()):
@@ -787,6 +1181,7 @@ class BestValidationCheckpointer(hooks.HookBase):
             seen_tags.add(target[0])
         self.targets = tuple(targets)
         self.best = {tag: float("-inf") for tag, _, _ in self.targets}
+        self.best["balance"] = float("-inf")
         self.min_miou_thresholds = _parse_best_checkpoint_min_miou(min_miou_thresholds)
         self._apply_min_miou_thresholds()
         self.last_seen_iter = -1
@@ -820,33 +1215,76 @@ class BestValidationCheckpointer(hooks.HookBase):
                     if value is not None:
                         self.best[tag] = max(self.best[tag], float(value))
 
+    def _result_for_target(self, tag, dataset_names, results):
+        dataset_result = {}
+        for dataset_name in dataset_names:
+            if dataset_name in results:
+                dataset_result = results[dataset_name]
+                break
+            if len(self.dataset_names) == 1 and dataset_name == self.dataset_names[0]:
+                dataset_result = results
+                break
+        if (
+            not dataset_result
+            and len(self.dataset_names) == 1
+            and _dataset_matches_best_tag(tag, self.dataset_names[0])
+        ):
+            dataset_result = results
+        if not dataset_result:
+            for dataset_name, candidate_result in results.items():
+                if _dataset_matches_best_tag(tag, dataset_name):
+                    dataset_result = candidate_result
+                    break
+        return dataset_result
+
+    @staticmethod
+    def _miou_from_result(dataset_result):
+        if not isinstance(dataset_result, dict) or not dataset_result:
+            return None
+        sem_seg_result = dataset_result.get("sem_seg", dataset_result)
+        if not isinstance(sem_seg_result, dict):
+            return None
+        return sem_seg_result.get("mIoU")
+
+    def _miou_for_tag(self, tag, results):
+        for target_tag, dataset_names, _ in self.targets:
+            if target_tag != tag:
+                continue
+            return self._miou_from_result(self._result_for_target(tag, dataset_names, results))
+        return None
+
+    def _maybe_save_balance_best(self, results):
+        day_miou = self._miou_for_tag("day", results)
+        night_miou = self._miou_for_tag("night", results)
+        if day_miou is None or night_miou is None:
+            return
+        balance_miou = 0.5 * (float(day_miou) + float(night_miou))
+        if balance_miou <= self.best["balance"]:
+            return
+        self.best["balance"] = balance_miou
+        overall_miou = self._miou_for_tag("overall", results)
+        checkpoint_state = {
+            "iteration": self.trainer.iter,
+            "best_balance_mIoU": balance_miou,
+            "best_balance_day_mIoU": float(day_miou),
+            "best_balance_night_mIoU": float(night_miou),
+        }
+        if overall_miou is not None:
+            checkpoint_state["best_balance_overall_mIoU"] = float(overall_miou)
+        self.trainer.checkpointer.save("best_model_cosec_balance", **checkpoint_state)
+        self.trainer.storage.put_scalar("best_balance_mIoU", balance_miou, smoothing_hint=False)
+        self.trainer.storage.put_scalar("best_balance_day_mIoU", float(day_miou), smoothing_hint=False)
+        self.trainer.storage.put_scalar("best_balance_night_mIoU", float(night_miou), smoothing_hint=False)
+        if overall_miou is not None:
+            self.trainer.storage.put_scalar("best_balance_overall_mIoU", float(overall_miou), smoothing_hint=False)
+
     def _maybe_save_best(self):
         results = getattr(self.trainer, "_last_eval_results", None)
         if not results or self.trainer.iter == self.last_seen_iter:
             return
         self.last_seen_iter = self.trainer.iter
         for tag, dataset_names, checkpoint_name in self.targets:
-            dataset_result = {}
-            for dataset_name in dataset_names:
-                if dataset_name in results:
-                    dataset_result = results[dataset_name]
-                    break
-                if len(self.dataset_names) == 1 and dataset_name == self.dataset_names[0]:
-                    dataset_result = results
-                    break
-            if (
-                not dataset_result
-                and len(self.dataset_names) == 1
-                and _dataset_matches_best_tag(tag, self.dataset_names[0])
-            ):
-                dataset_result = results
-            if not dataset_result:
-                for dataset_name, candidate_result in results.items():
-                    if _dataset_matches_best_tag(tag, dataset_name):
-                        dataset_result = candidate_result
-                        break
-            sem_seg_result = dataset_result.get("sem_seg", dataset_result)
-            miou = sem_seg_result.get("mIoU")
+            miou = self._miou_from_result(self._result_for_target(tag, dataset_names, results))
             if miou is None:
                 continue
             if miou > self.best[tag]:
@@ -857,6 +1295,7 @@ class BestValidationCheckpointer(hooks.HookBase):
                     **{f"best_{tag}_mIoU": miou},
                 )
                 self.trainer.storage.put_scalar(f"best_{tag}_mIoU", miou, smoothing_hint=False)
+        self._maybe_save_balance_best(results)
 
     def after_step(self):
         self._maybe_save_best()
@@ -865,7 +1304,89 @@ class BestValidationCheckpointer(hooks.HookBase):
         self._maybe_save_best()
 
 
+class DSEC19ToDSEC11SemSegEvaluator(SemSegEvaluator):
+    def __init__(self, dataset_name, distributed=True, output_dir=None):
+        super().__init__(dataset_name, distributed=distributed, output_dir=output_dir)
+        meta = MetadataCatalog.get(dataset_name)
+        self._source_to_target = np.asarray(
+            getattr(meta, "dsec19_to_dsec11", DSEC19_TO_DSEC11),
+            dtype=np.int64,
+        )
+
+    def _map_prediction(self, pred, output_class_count):
+        if int(output_class_count) == self._num_classes:
+            mapped = pred.astype(np.int64, copy=True)
+        else:
+            mapped = np.full(pred.shape, self._num_classes, dtype=np.int64)
+            valid = (pred >= 0) & (pred < len(self._source_to_target))
+            mapped[valid] = self._source_to_target[pred[valid]]
+        invalid = (mapped < 0) | (mapped >= self._num_classes)
+        mapped[invalid] = self._num_classes
+        return mapped
+
+    def _map_sem_seg_scores(self, sem_seg):
+        output_class_count = int(sem_seg.shape[0])
+        if output_class_count == self._num_classes:
+            return np.array(sem_seg.argmax(dim=0).to(self._cpu_device), dtype=np.int64)
+        if output_class_count != len(self._source_to_target):
+            raw_pred = np.array(sem_seg.argmax(dim=0).to(self._cpu_device), dtype=np.int64)
+            return self._map_prediction(raw_pred, output_class_count)
+
+        mapped_scores = sem_seg.new_zeros((self._num_classes, *sem_seg.shape[-2:]))
+        for source_id, target_id in enumerate(self._source_to_target):
+            target_id = int(target_id)
+            if 0 <= target_id < self._num_classes:
+                mapped_scores[target_id] += sem_seg[source_id]
+        return np.array(mapped_scores.argmax(dim=0).to(self._cpu_device), dtype=np.int64)
+
+    def process(self, inputs, outputs):
+        for input_record, output in zip(inputs, outputs):
+            sem_seg = output["sem_seg"]
+            output_class_count = sem_seg.shape[0]
+            pred = self._map_sem_seg_scores(sem_seg)
+
+            with PathManager.open(self.input_file_to_gt_file[input_record["file_name"]], "rb") as handle:
+                gt = np.array(Image.open(handle), dtype=np.int64)
+            invalid_gt = (gt == self._ignore_label) | (gt < 0) | (gt >= self._num_classes)
+            gt[invalid_gt] = self._num_classes
+
+            self._conf_matrix += np.bincount(
+                (self._num_classes + 1) * pred.reshape(-1) + gt.reshape(-1),
+                minlength=self._conf_matrix.size,
+            ).reshape(self._conf_matrix.shape)
+
+            self._predictions.extend(self.encode_json_sem_seg(pred, input_record["file_name"]))
+
+
 class CoSECTrainer(Mask2FormerTrainer):
+    @classmethod
+    def build_evaluator(cls, cfg, dataset_name, output_folder=None):
+        evaluator_type = MetadataCatalog.get(dataset_name).evaluator_type
+        if evaluator_type == "sem_seg_dsec19_to_dsec11":
+            if output_folder is None:
+                output_folder = os.path.join(cfg.OUTPUT_DIR, "inference")
+            return DSEC19ToDSEC11SemSegEvaluator(
+                dataset_name,
+                distributed=True,
+                output_dir=output_folder,
+            )
+        return super().build_evaluator(cfg, dataset_name, output_folder)
+
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        if cfg.INPUT.EVENT.CONCAT_TO_IMAGE or cfg.MODEL.INIT_DSEC11_HEAD_FROM_DSEC19:
+            checkpointer_kwargs = {
+                "init_dsec11_head_from_dsec19": cfg.MODEL.INIT_DSEC11_HEAD_FROM_DSEC19,
+            }
+            if cfg.INPUT.EVENT.CONCAT_TO_IMAGE:
+                checkpointer_kwargs["input_concat_channels"] = cfg.INPUT.EVENT.CONCAT_CHANNELS
+            self.checkpointer = CoSECDetectionCheckpointer(
+                self.model,
+                cfg.OUTPUT_DIR,
+                trainer=weakref.proxy(self),
+                **checkpointer_kwargs,
+            )
+
     @classmethod
     def build_model(cls, cfg):
         model = super().build_model(cfg)
@@ -998,17 +1519,29 @@ def main(args):
     from train_net import setup  # noqa: WPS433
 
     cfg = setup(args)
-    if not args.eval_only and comm.is_main_process() and not should_skip_code_backup():
+    if comm.is_main_process() and not should_skip_code_backup():
         backup_runtime_code(cfg.OUTPUT_DIR, args)
     if args.eval_only:
         model = CoSECTrainer.build_model(cfg)
-        DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(
+        checkpointer_cls = (
+            CoSECDetectionCheckpointer
+            if cfg.INPUT.EVENT.CONCAT_TO_IMAGE or cfg.MODEL.INIT_DSEC11_HEAD_FROM_DSEC19
+            else DetectionCheckpointer
+        )
+        checkpointer_kwargs = {}
+        if cfg.INPUT.EVENT.CONCAT_TO_IMAGE:
+            checkpointer_kwargs["input_concat_channels"] = cfg.INPUT.EVENT.CONCAT_CHANNELS
+        if cfg.MODEL.INIT_DSEC11_HEAD_FROM_DSEC19:
+            checkpointer_kwargs["init_dsec11_head_from_dsec19"] = True
+        checkpointer_cls(model, save_dir=cfg.OUTPUT_DIR, **checkpointer_kwargs).resume_or_load(
             cfg.MODEL.WEIGHTS,
             resume=args.resume,
         )
         res = CoSECTrainer.test(cfg, model)
         if cfg.TEST.AUG.ENABLED:
             res.update(CoSECTrainer.test_with_TTA(cfg, model))
+        if comm.is_main_process():
+            write_eval_results(cfg.OUTPUT_DIR, res)
         return res
 
     trainer = CoSECTrainer(cfg)

@@ -697,7 +697,7 @@ class D2SwinTransformer(SwinTransformer, Backbone):
 
         pretrain_img_size = cfg.MODEL.SWIN.PRETRAIN_IMG_SIZE
         patch_size = cfg.MODEL.SWIN.PATCH_SIZE
-        in_chans = 3
+        in_chans = cfg.MODEL.SWIN.IN_CHANS
         embed_dim = cfg.MODEL.SWIN.EMBED_DIM
         depths = cfg.MODEL.SWIN.DEPTHS
         num_heads = cfg.MODEL.SWIN.NUM_HEADS

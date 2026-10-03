@@ -40,6 +40,7 @@ class MaskFormerSemanticDatasetMapper:
         ignore_label,
         size_divisibility,
         event_num_bins,
+        event_temporal_mode,
         event_support_percentile,
         event_temporal_threshold,
         event_support_dilation,
@@ -48,6 +49,7 @@ class MaskFormerSemanticDatasetMapper:
         event_edge_dropout_prob,
         event_force_zero,
         event_edge_window_radii_ms,
+        event_edge_representation,
         event_boundary_radii,
         event_class_boundary_radius,
         event_class_boundary_num_classes,
@@ -67,6 +69,16 @@ class MaskFormerSemanticDatasetMapper:
         self.ignore_label = ignore_label
         self.size_divisibility = size_divisibility
         self.event_num_bins = event_num_bins
+        temporal_mode = str(event_temporal_mode).lower()
+        temporal_mode = {
+            "bidirectional": "bidir",
+            "both": "bidir",
+            "old": "old_only",
+            "new": "new_only",
+        }.get(temporal_mode, temporal_mode)
+        if temporal_mode not in {"bidir", "old_only", "new_only"}:
+            raise ValueError(f"Unsupported INPUT.EVENT.TEMPORAL_MODE: {event_temporal_mode!r}")
+        self.event_temporal_mode = temporal_mode
         self.event_support_percentile = event_support_percentile
         self.event_temporal_threshold = event_temporal_threshold
         self.event_support_dilation = event_support_dilation
@@ -75,6 +87,14 @@ class MaskFormerSemanticDatasetMapper:
         self.event_edge_dropout_prob = event_edge_dropout_prob
         self.event_force_zero = event_force_zero
         self.event_edge_window_radii_ms = tuple(int(value) for value in event_edge_window_radii_ms)
+        event_edge_representation = str(event_edge_representation).lower()
+        if event_edge_representation in {"default", "triplet", "3ch"}:
+            event_edge_representation = "legacy"
+        if event_edge_representation in {"rms_v2", "true_reliability", "multiwindow_reliability"}:
+            event_edge_representation = "reliability_v2"
+        if event_edge_representation not in {"legacy", "reliability_v2"}:
+            raise ValueError(f"Unsupported INPUT.EVENT.EDGE_REPRESENTATION: {event_edge_representation!r}")
+        self.event_edge_representation = event_edge_representation
         self.event_boundary_radii = tuple(int(value) for value in event_boundary_radii)
         self.event_class_boundary_radius = int(event_class_boundary_radius)
         self.event_class_boundary_num_classes = int(event_class_boundary_num_classes)
@@ -127,6 +147,7 @@ class MaskFormerSemanticDatasetMapper:
             "ignore_label": ignore_label,
             "size_divisibility": cfg.INPUT.SIZE_DIVISIBILITY,
             "event_num_bins": cfg.INPUT.EVENT.NUM_BINS,
+            "event_temporal_mode": cfg.INPUT.EVENT.TEMPORAL_MODE,
             "event_support_percentile": cfg.INPUT.EVENT.SUPPORT_PERCENTILE,
             "event_temporal_threshold": cfg.INPUT.EVENT.TEMPORAL_THRESHOLD,
             "event_support_dilation": cfg.INPUT.EVENT.SUPPORT_DILATION,
@@ -135,6 +156,7 @@ class MaskFormerSemanticDatasetMapper:
             "event_edge_dropout_prob": cfg.INPUT.EVENT.EDGE_DROPOUT_PROB,
             "event_force_zero": cfg.INPUT.EVENT.ZERO_EVENT,
             "event_edge_window_radii_ms": cfg.INPUT.EVENT.EDGE_WINDOW_RADII_MS,
+            "event_edge_representation": cfg.INPUT.EVENT.EDGE_REPRESENTATION,
             "event_boundary_radii": cfg.INPUT.EVENT.BOUNDARY_RADII,
             "event_class_boundary_radius": (
                 cfg.MODEL.EVENT_EDGE.CLASS_BOUNDARY_RADIUS if cfg.MODEL.EVENT_EDGE.CLASS_AWARE else 0
@@ -146,7 +168,7 @@ class MaskFormerSemanticDatasetMapper:
     def _load_event(self, dataset_dict, image_shape):
         event_channels = self.event_num_bins * 2
         height, width = image_shape[:2]
-        if "event_h5" not in dataset_dict:
+        if "event_h5" not in dataset_dict and "event_dat_t" not in dataset_dict:
             return (
                 np.zeros((height, width, event_channels), dtype=np.float32),
                 np.zeros((height, width, 4), dtype=np.float32),
@@ -159,12 +181,19 @@ class MaskFormerSemanticDatasetMapper:
             image_shape,
             num_bins=self.event_num_bins,
         )
+        if self.event_temporal_mode == "old_only":
+            event = event.copy()
+            event[self.event_num_bins :, :, :] = 0
+        elif self.event_temporal_mode == "new_only":
+            event = event.copy()
+            event[: self.event_num_bins, :, :] = 0
         return event.transpose(1, 2, 0), aux.transpose(1, 2, 0)
 
     def _load_event_edge(self, dataset_dict, image_shape):
         height, width = image_shape[:2]
-        channels = len(self.event_edge_window_radii_ms) * 3
-        if "event_h5" not in dataset_dict or channels == 0:
+        channels_per_window = 5 if self.event_edge_representation == "reliability_v2" else 3
+        channels = len(self.event_edge_window_radii_ms) * channels_per_window
+        if ("event_h5" not in dataset_dict and "event_dat_t" not in dataset_dict) or channels == 0:
             return np.zeros((height, width, channels), dtype=np.float32)
 
         from cosec_event_dataset import load_event_edge_representation  # noqa: WPS433
@@ -173,6 +202,10 @@ class MaskFormerSemanticDatasetMapper:
             dataset_dict,
             image_shape,
             self.event_edge_window_radii_ms,
+            representation=self.event_edge_representation,
+            support_percentile=self.event_support_percentile,
+            temporal_threshold=self.event_temporal_threshold,
+            support_dilation=self.event_support_dilation,
         )
         return event_edge.transpose(1, 2, 0)
 
@@ -181,9 +214,16 @@ class MaskFormerSemanticDatasetMapper:
         new_density = aux[:, :, 1]
         pos_count = aux[:, :, 2]
         neg_count = aux[:, :, 3]
-        density_raw = old_density + new_density
+        if self.event_temporal_mode == "old_only":
+            density_raw = old_density
+            temporal_balance = (old_density > 0).astype(np.float32)
+        elif self.event_temporal_mode == "new_only":
+            density_raw = new_density
+            temporal_balance = (new_density > 0).astype(np.float32)
+        else:
+            density_raw = old_density + new_density
+            temporal_balance = 1.0 - np.abs(old_density - new_density) / (density_raw + 1e-6)
         density_total = np.log1p(density_raw)
-        temporal_balance = 1.0 - np.abs(old_density - new_density) / (density_raw + 1e-6)
         polarity_balance = 1.0 - np.abs(pos_count - neg_count) / (pos_count + neg_count + 1e-6)
 
         nonzero_density = density_total[density_total > 0]
@@ -298,6 +338,10 @@ class MaskFormerSemanticDatasetMapper:
                     dataset_dict["file_name"]
                 )
             )
+
+        if dataset_dict.get("image_crop_to_sem_seg") and image.shape[0] >= sem_seg_gt.shape[0] and image.shape[1] >= sem_seg_gt.shape[1]:
+            image = image[: sem_seg_gt.shape[0], : sem_seg_gt.shape[1]]
+            dataset_dict["height"], dataset_dict["width"] = sem_seg_gt.shape[:2]
 
         if image.shape[:2] != sem_seg_gt.shape[:2]:
             image = cv2.resize(

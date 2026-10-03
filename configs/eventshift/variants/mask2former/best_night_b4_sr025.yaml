@@ -1,0 +1,16 @@
+project:
+  name: EventShift-Best-Night-B4-SR025
+
+data:
+  test_root: ${TEST_ROOT:-/data/cosec/test}
+
+model:
+  name: best_night_b4_sr025
+  backend_config: ${EVENTSHIFT_ROOT:-.}/configs/selected/best_night_b4_sr025.yaml
+
+checkpoints:
+  init_weights: ${EVENTSHIFT_ROOT:-.}/checkpoints/best_night_b4_sr025.pth
+
+inference:
+  output_dir: ${EVENTSHIFT_ROOT:-.}/outputs/best_night_b4_sr025
+  progress_desc: best_night_b4_sr025

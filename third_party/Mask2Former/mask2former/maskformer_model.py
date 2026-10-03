@@ -38,6 +38,210 @@ def _sum_losses(losses, keys):
     return total, found
 
 
+def _raw_image_tensors(raw_images):
+    if raw_images is None:
+        return None
+    if isinstance(raw_images, (list, tuple)):
+        return list(raw_images)
+    if torch.is_tensor(raw_images):
+        return [raw_images[index] for index in range(raw_images.shape[0])]
+    return None
+
+
+def _low_light_map_from_raw(raw_images, size, dtype, device, luma_threshold, contrast_threshold):
+    images = _raw_image_tensors(raw_images)
+    if not images:
+        return None
+    maps = []
+    for image in images:
+        rgb = image.to(device=device, dtype=torch.float32).unsqueeze(0) / 255.0
+        r, g, b = rgb[:, 0:1], rgb[:, 1:2], rgb[:, 2:3]
+        luma = (0.299 * r + 0.587 * g + 0.114 * b).clamp(0.0, 1.0)
+        local_mean = F.avg_pool2d(luma, kernel_size=7, stride=1, padding=3)
+        contrast = (luma - local_mean).abs()
+        luma_score = (float(luma_threshold) - luma) / max(float(luma_threshold), 1e-6)
+        contrast_score = (float(contrast_threshold) - contrast) / max(float(contrast_threshold), 1e-6)
+        low_light = (0.7 * luma_score + 0.3 * contrast_score).clamp(0.0, 1.0)
+        maps.append(F.interpolate(low_light, size=size, mode="bilinear", align_corners=False))
+    return torch.cat(maps, dim=0).to(dtype=dtype)
+
+
+def _low_light_image_score_from_raw(raw_images, dtype, device, luma_threshold, contrast_threshold):
+    images = _raw_image_tensors(raw_images)
+    if not images:
+        return None
+    scores = []
+    for image in images:
+        rgb = image.to(device=device, dtype=torch.float32).unsqueeze(0) / 255.0
+        r, g, b = rgb[:, 0:1], rgb[:, 1:2], rgb[:, 2:3]
+        luma = (0.299 * r + 0.587 * g + 0.114 * b).clamp(0.0, 1.0)
+        local_mean = F.avg_pool2d(luma, kernel_size=7, stride=1, padding=3)
+        contrast = (luma - local_mean).abs()
+        luma_score = (float(luma_threshold) - luma) / max(float(luma_threshold), 1e-6)
+        contrast_score = (float(contrast_threshold) - contrast) / max(float(contrast_threshold), 1e-6)
+        low_light = (0.7 * luma_score + 0.3 * contrast_score).clamp(0.0, 1.0)
+        scores.append(low_light.mean(dim=(1, 2, 3), keepdim=True))
+    return torch.cat(scores, dim=0).to(dtype=dtype)
+
+
+def _uncertainty_image_score_from_sem_prob(sem_prob, dtype, device):
+    if sem_prob is None:
+        return None
+    prob = sem_prob.detach().to(device=device, dtype=torch.float32).clamp_min(1e-8)
+    prob = prob / prob.sum(dim=1, keepdim=True).clamp_min(1e-8)
+    topk = prob.topk(k=min(2, prob.shape[1]), dim=1).values
+    confidence = topk[:, 0:1]
+    if topk.shape[1] > 1:
+        margin = (topk[:, 0:1] - topk[:, 1:2]).clamp(0.0, 1.0)
+    else:
+        margin = torch.ones_like(confidence)
+    entropy = -(prob * prob.log()).sum(dim=1, keepdim=True)
+    entropy = entropy / max(math.log(max(prob.shape[1], 2)), 1e-6)
+    uncertainty = (0.5 * (1.0 - confidence) + 0.3 * (1.0 - margin) + 0.2 * entropy).clamp(0.0, 1.0)
+    return uncertainty.mean(dim=(2, 3), keepdim=True).to(dtype=dtype)
+
+
+def _image_reliability_from_maps(reliability, support=None, reduction="mean", topk_fraction=0.10):
+    reduction = str(reduction).lower()
+    flat = reliability.flatten(1)
+    if reduction in {"support_mean", "active_mean", "nonzero_mean"} and support is not None:
+        mask = support.flatten(1) > 0
+        denom = mask.to(dtype=flat.dtype).sum(dim=1, keepdim=True).clamp_min(1.0)
+        value = (flat * mask.to(dtype=flat.dtype)).sum(dim=1, keepdim=True) / denom
+    elif reduction in {"topk", "topk_mean", "high_mean"}:
+        fraction = min(max(float(topk_fraction), 0.0), 1.0)
+        k = max(1, min(flat.shape[1], int(flat.shape[1] * fraction + 0.5)))
+        value = flat.topk(k, dim=1, largest=True, sorted=False).values.mean(dim=1, keepdim=True)
+    elif reduction in {"max", "amax"}:
+        value = flat.amax(dim=1, keepdim=True)
+    else:
+        value = flat.mean(dim=1, keepdim=True)
+    return value.view(reliability.shape[0], 1, 1, 1)
+
+
+def _multiwindow_map_from_maps(values, support=None, edge=None, reduction="max"):
+    reduction = str(reduction).lower()
+    if values is None:
+        return None
+    if reduction in {"mean", "avg", "average"}:
+        return values.mean(dim=1)
+    if reduction in {"support_mean", "active_mean"} and support is not None:
+        weights = support.clamp(0.0, 1.0)
+        return (values * weights).sum(dim=1) / weights.sum(dim=1).clamp_min(1e-6)
+    if reduction in {"edge_weighted", "edge_mean", "structure_weighted"} and edge is not None:
+        weights = edge.clamp_min(0.0)
+        return (values * weights).sum(dim=1) / weights.sum(dim=1).clamp_min(1e-6)
+    return values.amax(dim=1)
+
+
+def _structural_prior_from_event_edge(
+    structural_prior,
+    size,
+    dtype,
+    reliability_aware=False,
+    reliability_mode="v1",
+    global_reduction="mean",
+    global_topk_fraction=0.10,
+    bias_reduction="max",
+):
+    diagnostics = {}
+    if structural_prior is None or structural_prior.numel() == 0 or structural_prior.shape[1] == 0:
+        return None, None, None, None, diagnostics
+    x = structural_prior.to(dtype=torch.float32)
+    x = F.interpolate(x, size=size, mode="bilinear", align_corners=False)
+    mode = str(reliability_mode).lower()
+    if mode in {"true", "on", "yes"}:
+        mode = "v1"
+
+    image_reliability = None
+    bias_reliability = None
+    bias_support = None
+    if reliability_aware and mode in {"v2", "rms_v2", "true_reliability", "multiwindow_reliability"} and x.shape[1] >= 5:
+        usable_channels = (x.shape[1] // 5) * 5
+        window_count = usable_channels // 5
+        groups = x[:, :usable_channels].reshape(x.shape[0], window_count, 5, x.shape[2], x.shape[3]).abs()
+        density = groups[:, :, 0:1].clamp_min(0.0)
+        temporal = groups[:, :, 1:2].clamp(0.0, 1.0)
+        polarity = groups[:, :, 2:3].clamp(0.0, 1.0)
+        support = groups[:, :, 3:4].clamp(0.0, 1.0)
+        edge = groups[:, :, 4:5].clamp_min(0.0)
+
+        density_max = density.flatten(3).amax(dim=3).view(x.shape[0], window_count, 1, 1, 1).detach()
+        density_norm = (density / density_max.clamp_min(1e-6)).clamp(0.0, 1.0)
+        reliability = (
+            support
+            * density_norm.clamp_min(1e-4).sqrt()
+            * temporal.clamp_min(1e-4)
+            * polarity.clamp_min(1e-4).pow(0.25)
+        ).clamp(0.0, 1.0)
+        numerator = (edge * reliability).sum(dim=1)
+        denominator = reliability.sum(dim=1).clamp_min(1e-6)
+        x = numerator / denominator
+        image_reliability = _image_reliability_from_maps(
+            reliability,
+            support=support,
+            reduction=global_reduction,
+            topk_fraction=global_topk_fraction,
+        )
+        bias_reliability = _multiwindow_map_from_maps(
+            reliability,
+            support=support,
+            edge=edge,
+            reduction=bias_reduction,
+        )
+        bias_support = _multiwindow_map_from_maps(
+            support,
+            support=support,
+            edge=edge,
+            reduction=bias_reduction,
+        )
+        diagnostics["structural_reliability_mean"] = reliability.detach().mean()
+        diagnostics["structural_reliability_p95"] = torch.quantile(reliability.detach().float().flatten(), 0.95)
+        diagnostics["structural_image_reliability_mean"] = image_reliability.detach().mean()
+        diagnostics["structural_image_reliability_min"] = image_reliability.detach().amin()
+        diagnostics["structural_image_reliability_max"] = image_reliability.detach().amax()
+        for window_idx in range(min(window_count, 4)):
+            window_reliability = reliability[:, window_idx]
+            diagnostics[f"structural_w{window_idx}_reliability_mean"] = window_reliability.detach().mean()
+            diagnostics[f"structural_w{window_idx}_reliability_p95"] = torch.quantile(
+                window_reliability.detach().float().flatten(), 0.95
+            )
+    elif reliability_aware and x.shape[1] >= 3:
+        usable_channels = (x.shape[1] // 3) * 3
+        window_count = usable_channels // 3
+        triplets = x[:, :usable_channels].reshape(x.shape[0], window_count, 3, x.shape[2], x.shape[3]).abs()
+        density = triplets[:, :, 0:1]
+        edge_score = triplets[:, :, 1:2]
+        polarity = triplets[:, :, 2:3].clamp(0.0, 1.0)
+        density_mean = density.mean(dim=(3, 4), keepdim=True).detach().clamp_min(1e-6)
+        density_rel = (density / density_mean).clamp(0.0, 1.0)
+        reliability = (density_rel.sqrt() * (0.5 + 0.5 * polarity)).clamp(0.0, 1.0)
+        x = (edge_score * reliability).mean(dim=1)
+        image_reliability = _image_reliability_from_maps(
+            reliability,
+            reduction=global_reduction,
+            topk_fraction=global_topk_fraction,
+        )
+        bias_reliability = _multiwindow_map_from_maps(
+            reliability,
+            edge=edge_score,
+            reduction=bias_reduction,
+        )
+        diagnostics["structural_reliability_mean"] = reliability.detach().mean()
+        diagnostics["structural_reliability_p95"] = torch.quantile(reliability.detach().float().flatten(), 0.95)
+        diagnostics["structural_image_reliability_mean"] = image_reliability.detach().mean()
+    else:
+        x = x.abs().mean(dim=1, keepdim=True)
+
+    mean = x.mean(dim=(2, 3), keepdim=True).detach().clamp_min(1e-6)
+    structural_map = (x / mean).clamp(0.0, 3.0).to(dtype=dtype)
+    diagnostics["structural_prior_pre_norm_mean"] = x.detach().mean()
+    return structural_map, image_reliability, bias_reliability, bias_support, diagnostics
+
+def _sample_rms(x, eps=0.0):
+    return torch.sqrt(torch.mean(x.float().pow(2), dim=(1, 2, 3), keepdim=True) + float(eps))
+
+
 class EventStageFusion(nn.Module):
     def __init__(
         self,
@@ -53,6 +257,15 @@ class EventStageFusion(nn.Module):
         reliability_polarity_power,
         reliability_floor,
         reliability_gain,
+        gate_scale,
+        gate_floor,
+        gate_max,
+        low_light_gate_enabled,
+        low_light_gate_floor,
+        low_light_gate_gain,
+        low_light_gate_max,
+        low_light_luma_threshold,
+        low_light_contrast_threshold,
     ):
         super().__init__()
         hidden_dim = min(int(hidden_dim), int(feat_channels))
@@ -73,6 +286,15 @@ class EventStageFusion(nn.Module):
         self.reliability_polarity_power = float(reliability_polarity_power)
         self.reliability_floor = float(reliability_floor)
         self.reliability_gain = float(reliability_gain)
+        self.gate_scale = float(gate_scale)
+        self.gate_floor = float(gate_floor)
+        self.gate_max = float(gate_max)
+        self.low_light_gate_enabled = bool(low_light_gate_enabled)
+        self.low_light_gate_floor = float(low_light_gate_floor)
+        self.low_light_gate_gain = float(low_light_gate_gain)
+        self.low_light_gate_max = float(low_light_gate_max)
+        self.low_light_luma_threshold = float(low_light_luma_threshold)
+        self.low_light_contrast_threshold = float(low_light_contrast_threshold)
         nn.init.zeros_(self.event_encoder[-1].weight)
         nn.init.zeros_(self.event_encoder[-1].bias)
         nn.init.zeros_(self.gate.weight)
@@ -95,7 +317,19 @@ class EventStageFusion(nn.Module):
             reliability = reliability * polarity.clamp_min(1e-4).pow(self.reliability_polarity_power)
         return reliability.clamp(0.0, 1.0), support
 
-    def forward(self, feature, event, event_stats):
+    def _low_light_score(self, raw_images, size, dtype):
+        if raw_images is None or not self.low_light_gate_enabled:
+            return None
+        return _low_light_map_from_raw(
+            raw_images,
+            size,
+            dtype,
+            self.alpha.device,
+            self.low_light_luma_threshold,
+            self.low_light_contrast_threshold,
+        )
+
+    def forward(self, feature, event, event_stats, raw_images=None):
         size = feature.shape[-2:]
         event = F.interpolate(event, size=size, mode="bilinear", align_corners=False)
         smooth_stats = F.interpolate(event_stats[:, :3], size=size, mode="bilinear", align_corners=False)
@@ -113,14 +347,322 @@ class EventStageFusion(nn.Module):
             event_input = event_input * event_scale
         event_delta = self.event_encoder(event_input)
         usefulness = torch.sigmoid(self.gate(torch.cat([feature, event_delta, stage_stats.to(dtype=feature.dtype)], dim=1)))
-        final_gate = usefulness * gate_prior
+        low_light = self._low_light_score(raw_images, size, feature.dtype)
+        if low_light is None:
+            low_light = torch.zeros_like(gate_prior, dtype=feature.dtype)
+            low_light_factor = torch.ones_like(gate_prior, dtype=feature.dtype)
+        else:
+            floor = min(max(self.low_light_gate_floor, 0.0), 1.0)
+            low_light_factor = floor + (1.0 - floor) * low_light
+            if self.low_light_gate_gain != 0:
+                low_light_factor = low_light_factor * (1.0 + self.low_light_gate_gain * low_light)
+            low_light_factor = low_light_factor.clamp(0.0, max(self.low_light_gate_max, 1e-6))
+        final_gate = usefulness * gate_prior * low_light_factor
+        if self.gate_floor > 0:
+            gate_floor = self.gate_floor * gate_prior * low_light_factor
+            final_gate = torch.maximum(final_gate, gate_floor)
+        final_gate = (final_gate * self.gate_scale).clamp(0.0, max(self.gate_max, 1e-6))
+        alpha = self.alpha.clamp(0.0, 1.0)
+        event_update = alpha * final_gate * event_delta
+        update_abs_mean = event_update.detach().abs().mean()
+        feature_abs_mean = feature.detach().abs().mean().clamp_min(1e-6)
         aux = {
             "final_gate": final_gate,
+            "usefulness": usefulness,
+            "gate_prior": gate_prior.to(dtype=feature.dtype),
+            "low_light": low_light.to(dtype=feature.dtype),
+            "low_light_factor": low_light_factor.to(dtype=feature.dtype),
+            "effective_gate": alpha * final_gate,
+            "event_delta_abs_mean": event_delta.detach().abs().mean(),
+            "event_update_abs_mean": update_abs_mean,
+            "feature_abs_mean": feature_abs_mean,
+            "update_feature_ratio": update_abs_mean / feature_abs_mean,
             "reliability": reliability.to(dtype=feature.dtype),
             "support": support.to(dtype=feature.dtype),
             "invalid": (support * (1.0 - reliability)).to(dtype=feature.dtype),
         }
-        return feature + self.alpha.clamp(0.0, 1.0) * final_gate * event_delta, aux
+        return feature + event_update, aux
+
+
+class BudgetedEventStageFusion(nn.Module):
+    def __init__(
+        self,
+        event_channels,
+        stat_channels,
+        feat_channels,
+        hidden_dim,
+        lambda_max,
+        lambda_floor,
+        warmup_iters,
+        r_max,
+        m_max,
+        allocator_bias,
+        use_low_light,
+        low_light_bias,
+        low_light_gain,
+        use_uncertainty,
+        uncertainty_bias,
+        uncertainty_gain,
+        low_light_luma_threshold,
+        low_light_contrast_threshold,
+        use_reliability_bias,
+        reliability_beta,
+        reliability_bias_source,
+        use_support_bias,
+        support_beta,
+        support_bias_source,
+        structural_bias_reduction,
+        use_structural_prior,
+        structural_reliability_aware,
+        structural_reliability_mode,
+        structural_global_trust,
+        structural_global_floor,
+        structural_global_reduction,
+        structural_global_topk_fraction,
+        structural_beta,
+    ):
+        super().__init__()
+        hidden_dim = min(int(hidden_dim), int(feat_channels))
+        self.event_encoder = nn.Sequential(
+            nn.Conv2d(event_channels, hidden_dim, kernel_size=3, padding=1),
+            nn.GroupNorm(_group_count(hidden_dim), hidden_dim),
+            nn.GELU(),
+            nn.Conv2d(hidden_dim, hidden_dim, kernel_size=3, padding=1),
+            nn.GroupNorm(_group_count(hidden_dim), hidden_dim),
+            nn.GELU(),
+            nn.Conv2d(hidden_dim, feat_channels, kernel_size=1),
+        )
+        self.allocator = nn.Conv2d(feat_channels * 2 + stat_channels, 1, kernel_size=1)
+        self.alpha = nn.Parameter(torch.tensor(1.0), requires_grad=False)
+        self.lambda_max = float(lambda_max)
+        self.lambda_floor = float(lambda_floor)
+        self.warmup_iters = int(warmup_iters)
+        self.r_max = float(r_max)
+        self.m_max = float(m_max)
+        self.use_low_light = bool(use_low_light)
+        self.low_light_bias = float(low_light_bias)
+        self.low_light_gain = float(low_light_gain)
+        self.use_uncertainty = bool(use_uncertainty)
+        self.uncertainty_bias = float(uncertainty_bias)
+        self.uncertainty_gain = float(uncertainty_gain)
+        self.low_light_luma_threshold = float(low_light_luma_threshold)
+        self.low_light_contrast_threshold = float(low_light_contrast_threshold)
+        self.use_reliability_bias = bool(use_reliability_bias)
+        self.reliability_beta = float(reliability_beta)
+        self.reliability_bias_source = str(reliability_bias_source).lower()
+        self.use_support_bias = bool(use_support_bias)
+        self.support_beta = float(support_beta)
+        self.support_bias_source = str(support_bias_source).lower()
+        self.structural_bias_reduction = str(structural_bias_reduction).lower()
+        self.use_structural_prior = bool(use_structural_prior)
+        self.structural_reliability_aware = bool(structural_reliability_aware)
+        self.structural_reliability_mode = str(structural_reliability_mode).lower()
+        self.structural_global_trust = bool(structural_global_trust)
+        self.structural_global_floor = float(structural_global_floor)
+        self.structural_global_reduction = str(structural_global_reduction).lower()
+        self.structural_global_topk_fraction = float(structural_global_topk_fraction)
+        self.structural_beta = float(structural_beta)
+        nn.init.zeros_(self.event_encoder[-1].weight)
+        nn.init.zeros_(self.event_encoder[-1].bias)
+        nn.init.zeros_(self.allocator.weight)
+        nn.init.constant_(self.allocator.bias, float(allocator_bias))
+
+    def _event_reliability(self, stage_stats):
+        density = stage_stats[:, 0:1].clamp_min(0.0)
+        temporal = stage_stats[:, 1:2].clamp(0.0, 1.0)
+        polarity = stage_stats[:, 2:3].clamp(0.0, 1.0)
+        support = stage_stats[:, 3:4].clamp(0.0, 1.0)
+        density_max = density.flatten(2).amax(dim=2).view(-1, 1, 1, 1).clamp_min(1e-6)
+        density = (density / density_max).clamp(0.0, 1.0)
+        reliability = (support * density.clamp_min(1e-4).sqrt() * temporal.clamp_min(1e-4)).clamp(0.0, 1.0)
+        reliability = (reliability * polarity.clamp_min(1e-4).pow(0.25)).clamp(0.0, 1.0)
+        return reliability, support
+
+    def _scheduled_lambda(self, dtype, device):
+        progress = 1.0
+        if self.training and self.warmup_iters > 0:
+            try:
+                storage = get_event_storage()
+                progress = min(1.0, float(storage.iter + 1) / float(max(self.warmup_iters, 1)))
+            except AssertionError:
+                progress = 1.0
+        return torch.tensor(self.lambda_max * progress, dtype=dtype, device=device)
+
+    def _image_budget(self, raw_images, uncertainty_img, dtype, device, batch_size):
+        factors = []
+        low_light_img = None
+        if self.use_low_light:
+            low_light_img = _low_light_image_score_from_raw(
+                raw_images,
+                dtype,
+                device,
+                self.low_light_luma_threshold,
+                self.low_light_contrast_threshold,
+            )
+            if low_light_img is None:
+                low_light_img = torch.zeros(batch_size, 1, 1, 1, dtype=dtype, device=device)
+            low_light_factor = torch.sigmoid(self.low_light_bias + self.low_light_gain * low_light_img)
+            floor = min(max(self.lambda_floor, 0.0), 1.0)
+            factors.append(floor + (1.0 - floor) * low_light_factor)
+
+        if self.use_uncertainty:
+            if uncertainty_img is None:
+                uncertainty_img = torch.zeros(batch_size, 1, 1, 1, dtype=dtype, device=device)
+            else:
+                uncertainty_img = uncertainty_img.to(device=device, dtype=dtype)
+            uncertainty_factor = torch.sigmoid(self.uncertainty_bias + self.uncertainty_gain * uncertainty_img)
+            floor = min(max(self.lambda_floor, 0.0), 1.0)
+            factors.append(floor + (1.0 - floor) * uncertainty_factor)
+        else:
+            uncertainty_img = None
+
+        if factors:
+            factor = torch.stack(factors, dim=0).amax(dim=0)
+        else:
+            factor = None
+        return low_light_img, uncertainty_img, factor
+
+    @staticmethod
+    def _clip_update_by_ratio(update, feature, r_max):
+        if r_max <= 0:
+            return update
+        update_rms = _sample_rms(update).detach()
+        feature_rms = _sample_rms(feature).detach().clamp_min(1e-6)
+        scale = ((float(r_max) * feature_rms) / update_rms.clamp_min(1e-6)).clamp(max=1.0)
+        return update * scale.to(dtype=update.dtype)
+
+    def forward(self, feature, event, event_stats, raw_images=None, uncertainty_img=None, structural_prior=None):
+        size = feature.shape[-2:]
+        event = F.interpolate(event, size=size, mode="bilinear", align_corners=False).to(dtype=feature.dtype)
+        smooth_stats = F.interpolate(event_stats[:, :3], size=size, mode="bilinear", align_corners=False)
+        support = F.interpolate(event_stats[:, 3:4], size=size, mode="nearest")
+        stage_stats = torch.cat([smooth_stats, support], dim=1).to(dtype=feature.dtype)
+        reliability, support = self._event_reliability(stage_stats)
+
+        delta = self.event_encoder(event)
+        delta_bounded = torch.tanh(delta)
+        feature_rms = _sample_rms(feature).detach().to(dtype=feature.dtype)
+        delta_rms = _sample_rms(delta_bounded, eps=1e-6).detach().to(dtype=feature.dtype).clamp_min(1e-6)
+        delta_hat = feature_rms * delta_bounded / delta_rms
+
+        q = self.allocator(torch.cat([feature, delta_hat, stage_stats], dim=1))
+        structural_map = None
+        structural_image_reliability = None
+        structural_bias_reliability = None
+        structural_bias_support = None
+        structural_diagnostics = {}
+        if self.use_structural_prior:
+            (
+                structural_map,
+                structural_image_reliability,
+                structural_bias_reliability,
+                structural_bias_support,
+                structural_diagnostics,
+            ) = _structural_prior_from_event_edge(
+                structural_prior,
+                size,
+                feature.dtype,
+                reliability_aware=self.structural_reliability_aware,
+                reliability_mode=self.structural_reliability_mode,
+                global_reduction=self.structural_global_reduction,
+                global_topk_fraction=self.structural_global_topk_fraction,
+                bias_reduction=self.structural_bias_reduction,
+            )
+
+        reliability_bias = reliability.to(dtype=feature.dtype)
+        if self.reliability_bias_source in {"structural", "multiwindow", "event_edge"} and structural_bias_reliability is not None:
+            reliability_bias = structural_bias_reliability.to(dtype=feature.dtype)
+        support_bias = support.to(dtype=feature.dtype)
+        if self.support_bias_source in {"structural", "multiwindow", "event_edge"} and structural_bias_support is not None:
+            support_bias = structural_bias_support.to(dtype=feature.dtype)
+
+        if self.use_reliability_bias:
+            q = q + self.reliability_beta * (2.0 * reliability_bias - 1.0)
+        if self.use_support_bias:
+            q = q + self.support_beta * (2.0 * support_bias - 1.0)
+        if structural_map is not None:
+            q = q + self.structural_beta * (structural_map - 1.0)
+        allocation_raw = F.softplus(q) + 1e-6
+        allocation = allocation_raw / allocation_raw.mean(dim=(1, 2, 3), keepdim=True).detach().clamp_min(1e-6)
+        if self.m_max > 0:
+            allocation = allocation.clamp(0.0, self.m_max)
+
+        low_light_img, uncertainty_img, budget_factor = self._image_budget(
+            raw_images, uncertainty_img, feature.dtype, feature.device, feature.shape[0]
+        )
+        lambda_base = self._scheduled_lambda(feature.dtype, feature.device)
+        lambda_img = lambda_base.view(1, 1, 1, 1)
+        if budget_factor is not None:
+            lambda_img = lambda_img * budget_factor.to(dtype=feature.dtype)
+        else:
+            budget_factor = torch.ones_like(lambda_img)
+        structural_trust_factor = torch.ones_like(lambda_img)
+        if structural_image_reliability is not None and self.structural_global_trust:
+            structural_image_reliability = structural_image_reliability.to(device=feature.device, dtype=feature.dtype)
+            structural_floor = min(max(self.structural_global_floor, 0.0), 1.0)
+            structural_trust_factor = structural_floor + (1.0 - structural_floor) * structural_image_reliability
+            lambda_img = lambda_img * structural_trust_factor
+        if low_light_img is None:
+            low_light_img = torch.zeros_like(lambda_img)
+        if uncertainty_img is None:
+            uncertainty_img = torch.zeros_like(lambda_img)
+        if structural_image_reliability is None:
+            structural_image_reliability = torch.zeros(
+                feature.shape[0], 1, 1, 1, dtype=feature.dtype, device=feature.device
+            )
+        if structural_map is None:
+            structural_map = torch.zeros_like(allocation)
+
+        update_preclip = lambda_img * allocation * delta_hat
+        event_update = self._clip_update_by_ratio(update_preclip, feature, self.r_max)
+        update_rms = _sample_rms(event_update).detach()
+        feature_rms_stat = _sample_rms(feature).detach().clamp_min(1e-6)
+        delta_hat_rms = _sample_rms(delta_hat).detach()
+        final_gate = allocation.to(dtype=feature.dtype)
+        invalid = (support * (1.0 - reliability)).to(dtype=feature.dtype)
+        aux = {
+            "final_gate": final_gate,
+            "usefulness": torch.sigmoid(q.detach()).to(dtype=feature.dtype),
+            "gate_prior": support.to(dtype=feature.dtype),
+            "low_light": low_light_img.to(dtype=feature.dtype),
+            "uncertainty": uncertainty_img.to(dtype=feature.dtype),
+            "low_light_factor": budget_factor.to(dtype=feature.dtype),
+            "effective_gate": (lambda_img * allocation).to(dtype=feature.dtype),
+            "event_delta_abs_mean": delta_hat.detach().abs().mean(),
+            "event_update_abs_mean": event_update.detach().abs().mean(),
+            "feature_abs_mean": feature.detach().abs().mean().clamp_min(1e-6),
+            "update_feature_ratio": update_rms.mean() / feature_rms_stat.mean(),
+            "reliability": reliability.to(dtype=feature.dtype),
+            "support": support.to(dtype=feature.dtype),
+            "bias_reliability": reliability_bias.detach(),
+            "bias_support": support_bias.detach(),
+            "invalid": invalid,
+            "alpha_stat": lambda_base.detach(),
+            "rms_F": feature_rms_stat.mean(),
+            "rms_delta_hat": delta_hat_rms.mean(),
+            "rms_update": update_rms.mean(),
+            "lambda_img_mean": lambda_img.detach().mean(),
+            "lambda_img_min": lambda_img.detach().amin(),
+            "lambda_img_max": lambda_img.detach().amax(),
+            "allocator_mean": allocation.detach().mean(),
+            "allocator_min": allocation.detach().amin(),
+            "allocator_max": allocation.detach().amax(),
+            "allocator_p05": torch.quantile(allocation.detach().float().flatten(), 0.05),
+            "allocator_p50": torch.quantile(allocation.detach().float().flatten(), 0.50),
+            "allocator_p95": torch.quantile(allocation.detach().float().flatten(), 0.95),
+            "low_light_img_mean": low_light_img.detach().mean(),
+            "uncertainty_img_mean": uncertainty_img.detach().mean(),
+            "structural_prior_mean": structural_map.detach().mean(),
+            "structural_prior_p95": torch.quantile(structural_map.detach().float().flatten(), 0.95),
+            "structural_image_reliability_mean": structural_image_reliability.detach().mean(),
+            "structural_image_reliability_min": structural_image_reliability.detach().amin(),
+            "structural_image_reliability_max": structural_image_reliability.detach().amax(),
+            "structural_trust_factor_mean": structural_trust_factor.detach().mean(),
+            "structural_trust_factor_min": structural_trust_factor.detach().amin(),
+            "structural_trust_factor_max": structural_trust_factor.detach().amax(),
+            "structural_diagnostics": structural_diagnostics,
+        }
+        return feature + event_update, aux
 
 
 class EventUsefulnessFusion(nn.Module):
@@ -140,20 +682,66 @@ class EventUsefulnessFusion(nn.Module):
         reliability_polarity_power,
         reliability_floor,
         reliability_gain,
+        gate_scale,
+        gate_floor,
+        gate_max,
+        low_light_gate_enabled,
+        low_light_gate_floor,
+        low_light_gate_gain,
+        low_light_gate_max,
+        low_light_luma_threshold,
+        low_light_contrast_threshold,
         gate_sparsity_weight,
         gate_invalid_weight,
         log_gate_stats,
+        mode="alpha_gate",
+        budget_lambda_max=0.03,
+        budget_lambda_floor=0.20,
+        budget_warmup_iters=1000,
+        budget_r_max=0.08,
+        budget_m_max=3.0,
+        budget_allocator_bias=0.0,
+        budget_use_low_light=False,
+        budget_low_light_bias=-2.0,
+        budget_low_light_gain=4.0,
+        budget_use_uncertainty=False,
+        budget_uncertainty_bias=-2.0,
+        budget_uncertainty_gain=4.0,
+        budget_use_reliability_bias=False,
+        budget_reliability_beta=1.0,
+        budget_reliability_bias_source="event_stats",
+        budget_use_support_bias=False,
+        budget_support_beta=0.5,
+        budget_support_bias_source="event_stats",
+        budget_structural_bias_reduction="max",
+        budget_use_structural_prior=False,
+        budget_structural_reliability_aware=False,
+        budget_structural_reliability_mode="v1",
+        budget_structural_global_trust=False,
+        budget_structural_global_floor=0.30,
+        budget_structural_global_reduction="mean",
+        budget_structural_global_topk_fraction=0.10,
+        budget_structural_beta=0.5,
+        budget_structural_channels=0,
     ):
         super().__init__()
         self.event_channels = int(event_channels)
         self.stat_channels = int(stat_channels)
         self.stages = tuple(stages)
+        self.mode = str(mode).lower()
         self.gate_sparsity_weight = float(gate_sparsity_weight)
         self.gate_invalid_weight = float(gate_invalid_weight)
         self.log_gate_stats = bool(log_gate_stats)
-        self.stage_fusions = nn.ModuleDict(
-            {
-                stage: EventStageFusion(
+        self.uses_uncertainty_budget = bool(budget_use_uncertainty) and self.mode == "budgeted_residual"
+        self.uses_structural_prior = bool(budget_use_structural_prior) and self.mode == "budgeted_residual"
+        self.structural_reliability_aware = bool(budget_structural_reliability_aware) and self.uses_structural_prior
+        self.structural_reliability_mode = str(budget_structural_reliability_mode).lower()
+        self.structural_global_trust = bool(budget_structural_global_trust) and self.uses_structural_prior
+        self.structural_channels = int(budget_structural_channels)
+        stage_fusions = {}
+        for stage in self.stages:
+            if self.mode in {"alpha_gate", "alphagate", "legacy"}:
+                stage_fusions[stage] = EventStageFusion(
                     self.event_channels,
                     self.stat_channels,
                     output_shapes[stage].channels,
@@ -166,14 +754,59 @@ class EventUsefulnessFusion(nn.Module):
                     reliability_polarity_power,
                     reliability_floor,
                     reliability_gain,
+                    gate_scale,
+                    gate_floor,
+                    gate_max,
+                    low_light_gate_enabled,
+                    low_light_gate_floor,
+                    low_light_gate_gain,
+                    low_light_gate_max,
+                    low_light_luma_threshold,
+                    low_light_contrast_threshold,
                 )
-                for stage in self.stages
-            }
-        )
+            elif self.mode == "budgeted_residual":
+                stage_fusions[stage] = BudgetedEventStageFusion(
+                    self.event_channels,
+                    self.stat_channels,
+                    output_shapes[stage].channels,
+                    hidden_dim,
+                    budget_lambda_max,
+                    budget_lambda_floor,
+                    budget_warmup_iters,
+                    budget_r_max,
+                    budget_m_max,
+                    budget_allocator_bias,
+                    budget_use_low_light,
+                    budget_low_light_bias,
+                    budget_low_light_gain,
+                    budget_use_uncertainty,
+                    budget_uncertainty_bias,
+                    budget_uncertainty_gain,
+                    low_light_luma_threshold,
+                    low_light_contrast_threshold,
+                    budget_use_reliability_bias,
+                    budget_reliability_beta,
+                    budget_reliability_bias_source,
+                    budget_use_support_bias,
+                    budget_support_beta,
+                    budget_support_bias_source,
+                    budget_structural_bias_reduction,
+                    budget_use_structural_prior,
+                    budget_structural_reliability_aware,
+                    budget_structural_reliability_mode,
+                    budget_structural_global_trust,
+                    budget_structural_global_floor,
+                    budget_structural_global_reduction,
+                    budget_structural_global_topk_fraction,
+                    budget_structural_beta,
+                )
+            else:
+                raise ValueError(f"Unsupported MODEL.EVENT_FUSION.MODE: {mode}")
+        self.stage_fusions = nn.ModuleDict(stage_fusions)
         self.last_gate_stats = {}
         self.aux_losses = {}
 
-    def forward(self, features, event, event_stats):
+    def forward(self, features, event, event_stats, raw_images=None, uncertainty_img=None, structural_prior=None):
         if event is None or event_stats is None:
             self.aux_losses = {}
             return features
@@ -184,7 +817,14 @@ class EventUsefulnessFusion(nn.Module):
         for stage, fusion in self.stage_fusions.items():
             if stage not in features:
                 continue
-            features[stage], aux = fusion(features[stage], event, event_stats)
+            features[stage], aux = fusion(
+                features[stage],
+                event,
+                event_stats,
+                raw_images=raw_images,
+                uncertainty_img=uncertainty_img,
+                structural_prior=structural_prior,
+            )
             final_gate = aux["final_gate"]
             reliability = aux["reliability"]
             support = aux["support"]
@@ -192,11 +832,50 @@ class EventUsefulnessFusion(nn.Module):
             gate_stats[stage] = {
                 "mean": final_gate.detach().mean(),
                 "max": final_gate.detach().max(),
+                "usefulness_mean": aux["usefulness"].detach().mean(),
+                "usefulness_max": aux["usefulness"].detach().max(),
+                "gate_prior_mean": aux["gate_prior"].detach().mean(),
+                "low_light_mean": aux["low_light"].detach().mean(),
+                "low_light_factor_mean": aux["low_light_factor"].detach().mean(),
+                "effective_mean": aux["effective_gate"].detach().mean(),
+                "effective_max": aux["effective_gate"].detach().max(),
+                "event_delta_abs_mean": aux["event_delta_abs_mean"].detach(),
+                "event_update_abs_mean": aux["event_update_abs_mean"].detach(),
+                "feature_abs_mean": aux["feature_abs_mean"].detach(),
+                "update_feature_ratio": aux["update_feature_ratio"].detach(),
                 "support_mean": support.detach().mean(),
                 "reliability_mean": reliability.detach().mean(),
                 "invalid_mean": invalid.detach().mean(),
-                "alpha": fusion.alpha.detach().clamp(0.0, 1.0),
+                "alpha": aux.get("alpha_stat", fusion.alpha.detach().clamp(0.0, 1.0)).detach(),
             }
+            for optional_name in (
+                "rms_F",
+                "rms_delta_hat",
+                "rms_update",
+                "lambda_img_mean",
+                "lambda_img_min",
+                "lambda_img_max",
+                "allocator_mean",
+                "allocator_min",
+                "allocator_max",
+                "allocator_p05",
+                "allocator_p50",
+                "allocator_p95",
+                "low_light_img_mean",
+                "uncertainty_img_mean",
+                "structural_prior_mean",
+                "structural_prior_p95",
+                "structural_image_reliability_mean",
+                "structural_image_reliability_min",
+                "structural_image_reliability_max",
+                "structural_trust_factor_mean",
+                "structural_trust_factor_min",
+                "structural_trust_factor_max",
+            ):
+                if optional_name in aux:
+                    gate_stats[stage][optional_name] = aux[optional_name].detach()
+            for optional_name, optional_value in aux.get("structural_diagnostics", {}).items():
+                gate_stats[stage][optional_name] = optional_value.detach()
             if self.gate_sparsity_weight > 0:
                 sparse_losses.append(final_gate.mean())
             if self.gate_invalid_weight > 0:
@@ -1819,6 +2498,8 @@ class MaskFormer(nn.Module):
         event_preserve_use_boundary_target: bool,
         event_preserve_use_event_edge: bool,
         event_preserve_log_stats: bool,
+        input_event_concat: bool,
+        input_event_concat_channels: int,
         # inference
         semantic_on: bool,
         panoptic_on: bool,
@@ -1877,6 +2558,8 @@ class MaskFormer(nn.Module):
         self.event_preserve_use_boundary_target = bool(event_preserve_use_boundary_target)
         self.event_preserve_use_event_edge = bool(event_preserve_use_event_edge)
         self.event_preserve_log_stats = bool(event_preserve_log_stats)
+        self.input_event_concat = bool(input_event_concat)
+        self.input_event_concat_channels = int(input_event_concat_channels)
         self._last_event_preserve_stats = {}
 
         # additional args
@@ -1909,9 +2592,47 @@ class MaskFormer(nn.Module):
                 reliability_polarity_power=cfg.MODEL.EVENT_FUSION.RELIABILITY_POLARITY_POWER,
                 reliability_floor=cfg.MODEL.EVENT_FUSION.RELIABILITY_FLOOR,
                 reliability_gain=cfg.MODEL.EVENT_FUSION.RELIABILITY_GAIN,
+                gate_scale=cfg.MODEL.EVENT_FUSION.GATE_SCALE,
+                gate_floor=cfg.MODEL.EVENT_FUSION.GATE_FLOOR,
+                gate_max=cfg.MODEL.EVENT_FUSION.GATE_MAX,
+                low_light_gate_enabled=cfg.MODEL.EVENT_FUSION.LOW_LIGHT_GATE_ENABLED,
+                low_light_gate_floor=cfg.MODEL.EVENT_FUSION.LOW_LIGHT_GATE_FLOOR,
+                low_light_gate_gain=cfg.MODEL.EVENT_FUSION.LOW_LIGHT_GATE_GAIN,
+                low_light_gate_max=cfg.MODEL.EVENT_FUSION.LOW_LIGHT_GATE_MAX,
+                low_light_luma_threshold=cfg.MODEL.EVENT_FUSION.LOW_LIGHT_LUMA_THRESHOLD,
+                low_light_contrast_threshold=cfg.MODEL.EVENT_FUSION.LOW_LIGHT_CONTRAST_THRESHOLD,
                 gate_sparsity_weight=cfg.MODEL.EVENT_FUSION.GATE_SPARSITY_WEIGHT,
                 gate_invalid_weight=cfg.MODEL.EVENT_FUSION.GATE_INVALID_WEIGHT,
                 log_gate_stats=cfg.MODEL.EVENT_FUSION.LOG_GATE_STATS,
+                mode=cfg.MODEL.EVENT_FUSION.MODE,
+                budget_lambda_max=cfg.MODEL.EVENT_FUSION.BUDGET_LAMBDA_MAX,
+                budget_lambda_floor=cfg.MODEL.EVENT_FUSION.BUDGET_LAMBDA_FLOOR,
+                budget_warmup_iters=cfg.MODEL.EVENT_FUSION.BUDGET_WARMUP_ITERS,
+                budget_r_max=cfg.MODEL.EVENT_FUSION.BUDGET_R_MAX,
+                budget_m_max=cfg.MODEL.EVENT_FUSION.BUDGET_M_MAX,
+                budget_allocator_bias=cfg.MODEL.EVENT_FUSION.BUDGET_ALLOCATOR_BIAS,
+                budget_use_low_light=cfg.MODEL.EVENT_FUSION.BUDGET_USE_LOW_LIGHT,
+                budget_low_light_bias=cfg.MODEL.EVENT_FUSION.BUDGET_LOW_LIGHT_BIAS,
+                budget_low_light_gain=cfg.MODEL.EVENT_FUSION.BUDGET_LOW_LIGHT_GAIN,
+                budget_use_uncertainty=cfg.MODEL.EVENT_FUSION.BUDGET_USE_UNCERTAINTY,
+                budget_uncertainty_bias=cfg.MODEL.EVENT_FUSION.BUDGET_UNCERTAINTY_BIAS,
+                budget_uncertainty_gain=cfg.MODEL.EVENT_FUSION.BUDGET_UNCERTAINTY_GAIN,
+                budget_use_reliability_bias=cfg.MODEL.EVENT_FUSION.BUDGET_USE_RELIABILITY_BIAS,
+                budget_reliability_beta=cfg.MODEL.EVENT_FUSION.BUDGET_RELIABILITY_BETA,
+                budget_reliability_bias_source=cfg.MODEL.EVENT_FUSION.BUDGET_RELIABILITY_BIAS_SOURCE,
+                budget_use_support_bias=cfg.MODEL.EVENT_FUSION.BUDGET_USE_SUPPORT_BIAS,
+                budget_support_beta=cfg.MODEL.EVENT_FUSION.BUDGET_SUPPORT_BETA,
+                budget_support_bias_source=cfg.MODEL.EVENT_FUSION.BUDGET_SUPPORT_BIAS_SOURCE,
+                budget_structural_bias_reduction=cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_BIAS_REDUCTION,
+                budget_use_structural_prior=cfg.MODEL.EVENT_FUSION.BUDGET_USE_STRUCTURAL_PRIOR,
+                budget_structural_reliability_aware=cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_RELIABILITY_AWARE,
+                budget_structural_reliability_mode=cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_RELIABILITY_AWARE_MODE,
+                budget_structural_global_trust=cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_GLOBAL_TRUST,
+                budget_structural_global_floor=cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_GLOBAL_FLOOR,
+                budget_structural_global_reduction=cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_GLOBAL_REDUCTION,
+                budget_structural_global_topk_fraction=cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_GLOBAL_TOPK_FRACTION,
+                budget_structural_beta=cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_BETA,
+                budget_structural_channels=cfg.MODEL.EVENT_FUSION.BUDGET_STRUCTURAL_CHANNELS,
             )
         event_edge_head = None
         if cfg.MODEL.EVENT_EDGE.ENABLED:
@@ -2165,6 +2886,8 @@ class MaskFormer(nn.Module):
             "event_preserve_use_boundary_target": cfg.MODEL.EVENT_PRESERVE.USE_BOUNDARY_TARGET,
             "event_preserve_use_event_edge": cfg.MODEL.EVENT_PRESERVE.USE_EVENT_EDGE,
             "event_preserve_log_stats": cfg.MODEL.EVENT_PRESERVE.LOG_STATS,
+            "input_event_concat": cfg.INPUT.EVENT.CONCAT_TO_IMAGE,
+            "input_event_concat_channels": cfg.INPUT.EVENT.CONCAT_CHANNELS,
             # inference
             "semantic_on": cfg.MODEL.MASK_FORMER.TEST.SEMANTIC_ON,
             "instance_on": cfg.MODEL.MASK_FORMER.TEST.INSTANCE_ON,
@@ -2206,6 +2929,33 @@ class MaskFormer(nn.Module):
         images = [(x - self.pixel_mean) / self.pixel_std for x in raw_images]
         images = ImageList.from_tensors(images, self.size_divisibility)
         raw_image_list = ImageList.from_tensors(raw_images, self.size_divisibility)
+        backbone_input = images.tensor
+        if self.input_event_concat:
+            concat_events = []
+            for x in batched_inputs:
+                event = x.get(
+                    "event",
+                    torch.zeros(
+                        (self.input_event_concat_channels, x["image"].shape[-2], x["image"].shape[-1]),
+                        dtype=torch.float32,
+                    ),
+                ).to(self.device).float()
+                if event.shape[0] > self.input_event_concat_channels:
+                    event = event[: self.input_event_concat_channels]
+                elif event.shape[0] < self.input_event_concat_channels:
+                    pad = torch.zeros(
+                        (
+                            self.input_event_concat_channels - event.shape[0],
+                            event.shape[-2],
+                            event.shape[-1],
+                        ),
+                        dtype=event.dtype,
+                        device=event.device,
+                    )
+                    event = torch.cat([event, pad], dim=0)
+                concat_events.append(event)
+            concat_events = ImageList.from_tensors(concat_events, self.size_divisibility).tensor
+            backbone_input = torch.cat([images.tensor, concat_events.to(dtype=images.tensor.dtype)], dim=1)
 
         event_stats_for_guide = None
         early_event_edges = None
@@ -2241,13 +2991,23 @@ class MaskFormer(nn.Module):
             early_event_edges = ImageList.from_tensors(event_edges, self.size_divisibility).tensor
             event_stats_for_guide = ImageList.from_tensors(event_stats, self.size_divisibility).tensor
             features = self.backbone(
-                images.tensor,
+                backbone_input,
                 early_event_adapter=self.early_event_edge_adapter,
                 event_edge=early_event_edges,
                 event_stats=event_stats_for_guide,
             )
         else:
-            features = self.backbone(images.tensor)
+            features = self.backbone(backbone_input)
+
+        uncertainty_img = None
+        if self.event_fusion is not None and getattr(self.event_fusion, "uses_uncertainty_budget", False):
+            teacher_prob = self._event_preserve_teacher_prob(features)
+            uncertainty_img = _uncertainty_image_score_from_sem_prob(
+                teacher_prob,
+                dtype=next(iter(features.values())).dtype,
+                device=self.device,
+            )
+
         if self.event_fusion is not None:
             events = [
                 x.get(
@@ -2272,7 +3032,28 @@ class MaskFormer(nn.Module):
             events = ImageList.from_tensors(events, self.size_divisibility).tensor
             event_stats = ImageList.from_tensors(event_stats, self.size_divisibility).tensor
             event_stats_for_guide = event_stats
-            features = self.event_fusion(features, events, event_stats)
+            structural_prior = None
+            if getattr(self.event_fusion, "uses_structural_prior", False):
+                structural_channels = max(1, int(getattr(self.event_fusion, "structural_channels", 0)))
+                structural_inputs = [
+                    x.get(
+                        "event_edge",
+                        torch.zeros(
+                            (structural_channels, x["image"].shape[-2], x["image"].shape[-1]),
+                            dtype=torch.float32,
+                        ),
+                    ).to(self.device)
+                    for x in batched_inputs
+                ]
+                structural_prior = ImageList.from_tensors(structural_inputs, self.size_divisibility).tensor
+            features = self.event_fusion(
+                features,
+                events,
+                event_stats,
+                raw_images=raw_images,
+                uncertainty_img=uncertainty_img,
+                structural_prior=structural_prior,
+            )
             if self.training:
                 self.event_fusion.put_gate_stats()
         event_edge_losses = {}

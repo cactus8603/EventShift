@@ -189,6 +189,7 @@ class Trainer(DefaultTrainer):
         defaults = {}
         defaults["lr"] = cfg.SOLVER.BASE_LR
         defaults["weight_decay"] = cfg.SOLVER.WEIGHT_DECAY
+        prefix_lr_multipliers = cls._parse_prefix_lr_multipliers(cfg)
 
         norm_module_types = (
             torch.nn.BatchNorm1d,
@@ -216,8 +217,15 @@ class Trainer(DefaultTrainer):
                 memo.add(value)
 
                 hyperparams = copy.copy(defaults)
+                parameter_name = (
+                    f"{module_name}.{module_param_name}" if module_name else module_param_name
+                )
                 if "backbone" in module_name:
                     hyperparams["lr"] = hyperparams["lr"] * cfg.SOLVER.BACKBONE_MULTIPLIER
+                for prefix, multiplier in prefix_lr_multipliers:
+                    if parameter_name.startswith(prefix):
+                        hyperparams["lr"] = cfg.SOLVER.BASE_LR * multiplier
+                        break
                 if (
                     "relative_position_bias_table" in module_param_name
                     or "absolute_pos_embed" in module_param_name
@@ -261,6 +269,24 @@ class Trainer(DefaultTrainer):
         if not cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model":
             optimizer = maybe_add_gradient_clipping(cfg, optimizer)
         return optimizer
+
+    @staticmethod
+    def _parse_prefix_lr_multipliers(cfg):
+        raw_items = list(getattr(cfg.SOLVER, "PREFIX_LR_MULTIPLIERS", []))
+        parsed = []
+        for item in raw_items:
+            if isinstance(item, str):
+                if "=" in item:
+                    prefix, multiplier = item.split("=", 1)
+                else:
+                    prefix, multiplier = item.split(":", 1)
+            else:
+                prefix, multiplier = item
+            parsed.append((str(prefix), float(multiplier)))
+        if parsed and comm.is_main_process():
+            logger = logging.getLogger("detectron2.trainer")
+            logger.info("Using prefix LR multipliers: %s", parsed)
+        return parsed
 
     @classmethod
     def test_with_TTA(cls, cfg, model):

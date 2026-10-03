@@ -123,6 +123,14 @@ See [data/README.md](data/README.md) for the dataset provenance, split strategy,
 
 Checkpoints are not stored in Git. Place them under `checkpoints/` or pass absolute paths through `--weights`.
 
+The convenience inference presets expect these local filenames:
+
+| Preset | Checkpoint |
+| --- | --- |
+| `overall` | `checkpoints/best_overall_b1_lambda003.pth` |
+| `day` | `checkpoints/best_day_b0_zero_event.pth` |
+| `night` | `checkpoints/best_night_b4_sr025.pth` |
+
 Final-submission reproduction expects the checkpoint filenames referenced by the recipe variants:
 
 | Checkpoint | Used by |
@@ -160,6 +168,18 @@ bash scripts/infer.sh \
 By default the backend command is printed for inspection. Add `--execute` to run it. Extra backend options can be passed after `--`.
 
 Expected outputs are PNG masks under the selected `--out-dir`.
+
+After placing one or more preset checkpoints under `checkpoints/`, the corresponding
+inference path can be launched directly:
+
+```bash
+bash scripts/run_inference.sh overall --test-root /path/to/cosec/test
+bash scripts/run_inference.sh day --test-root /path/to/cosec/test
+bash scripts/run_inference.sh night --test-root /path/to/cosec/test
+```
+
+The preset configs live under `configs/eventshift/variants/mask2former/`, while the
+resolved Mask2Former configs live under `configs/selected/`.
 
 ## Reproducing the Final Submission
 

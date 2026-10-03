@@ -66,13 +66,26 @@ def _resolve_manifest_path(path: str | Path, roots: list[Path]) -> Path:
     return candidates[0]
 
 
-def _legacy_split_contains_sample(sequence: str, frame_id: int, split: str) -> bool:
-    legacy_tools = eventshift_root() / "legacy" / "traincode_04111" / "tools"
-    if legacy_tools.is_dir() and str(legacy_tools) not in sys.path:
-        sys.path.insert(0, str(legacy_tools))
+@lru_cache(maxsize=1)
+def _legacy_split_contains_func():
+    root = eventshift_root()
+    tool_dirs = (
+        root / "tools",
+        root / "legacy" / "traincode_04111" / "tools",
+    )
+    for tool_dir in reversed(tool_dirs):
+        if tool_dir.is_dir() and str(tool_dir) not in sys.path:
+            sys.path.insert(0, str(tool_dir))
     try:
         from cosec_finetune_splits import split_contains_sample  # type: ignore
     except Exception:
+        return None
+    return split_contains_sample
+
+
+def _legacy_split_contains_sample(sequence: str, frame_id: int, split: str) -> bool:
+    split_contains_sample = _legacy_split_contains_func()
+    if split_contains_sample is None:
         return True
     return bool(split_contains_sample(sequence, frame_id, split))
 

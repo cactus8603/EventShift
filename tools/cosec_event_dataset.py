@@ -106,6 +106,8 @@ def load_cosec_event_dicts(split):
 
 
 _H5_CACHE = {}
+_DAT_CACHE = {}
+_RECTIFY_MAP_CACHE = {}
 
 
 def _h5(path):
@@ -115,6 +117,30 @@ def _h5(path):
         handle = h5py.File(path, "r")
         _H5_CACHE[path] = handle
     return handle
+
+
+def _dat_arrays(t_path, xyp_path):
+    key = (str(t_path), str(xyp_path))
+    arrays = _DAT_CACHE.get(key)
+    if arrays is not None:
+        return arrays
+
+    t_path = Path(t_path)
+    xyp_path = Path(xyp_path)
+    num_events = t_path.stat().st_size // np.dtype(np.int64).itemsize
+    expected_xyp_bytes = num_events * 3 * np.dtype(np.uint16).itemsize
+    if xyp_path.stat().st_size != expected_xyp_bytes:
+        raise ValueError(
+            f"DDD17 event xyp size does not match timestamps: "
+            f"{xyp_path} has {xyp_path.stat().st_size} bytes, expected {expected_xyp_bytes}"
+        )
+
+    arrays = (
+        np.memmap(t_path, dtype=np.int64, mode="r", shape=(num_events,)),
+        np.memmap(xyp_path, dtype=np.uint16, mode="r", shape=(num_events, 3)),
+    )
+    _DAT_CACHE[key] = arrays
+    return arrays
 
 
 def _event_group(h5_file):
@@ -151,7 +177,7 @@ def _event_slice(h5_file, time_window):
     if right <= left:
         return None
 
-    timestamps = np.asarray(group["t"][left:right])
+    timestamps = np.asarray(group["t"][left:right], dtype=np.int64)
     keep = (timestamps >= query_start_us) & (timestamps < query_end_us)
     if not np.any(keep):
         return None
@@ -159,9 +185,90 @@ def _event_slice(h5_file, time_window):
     return {
         "x": np.asarray(group["x"][left:right])[keep].astype(np.int64),
         "y": np.asarray(group["y"][left:right])[keep].astype(np.int64),
-        "t": (timestamps[keep] + t_offset).astype(np.float32),
+        "t": (timestamps[keep].astype(np.float64) + float(t_offset)).astype(np.float32),
         "p": np.asarray(group["p"][left:right])[keep].astype(np.int64),
     }
+
+
+def _event_slice_dat(dataset_dict, time_window):
+    start_time, end_time = [int(value) for value in time_window]
+    if end_time <= start_time:
+        return None
+
+    timestamps, xyp = _dat_arrays(dataset_dict["event_dat_t"], dataset_dict["event_dat_xyp"])
+    left = int(np.searchsorted(timestamps, start_time, side="left"))
+    right = int(np.searchsorted(timestamps, end_time, side="right"))
+    if right <= left:
+        return None
+
+    window_timestamps = np.asarray(timestamps[left:right], dtype=np.int64)
+    keep = (window_timestamps >= start_time) & (window_timestamps < end_time)
+    if not np.any(keep):
+        return None
+
+    window_xyp = np.asarray(xyp[left:right][keep], dtype=np.int64)
+    return {
+        "x": window_xyp[:, 0],
+        "y": window_xyp[:, 1],
+        "t": window_timestamps[keep].astype(np.float64),
+        "p": window_xyp[:, 2],
+    }
+
+
+def _rectify_map(path):
+    path = str(path)
+    rect_map = _RECTIFY_MAP_CACHE.get(path)
+    if rect_map is None:
+        handle = _h5(path)
+        if "rectify_map" not in handle:
+            raise KeyError(f"rectify_map dataset not found in {path}")
+        rect_map = np.asarray(handle["rectify_map"], dtype=np.float32)
+        _RECTIFY_MAP_CACHE[path] = rect_map
+    return rect_map
+
+
+def _rectify_events(events, dataset_dict):
+    if events is None or events["x"].size == 0 or "event_rectify_map" not in dataset_dict:
+        return events
+
+    rect_map = _rectify_map(dataset_dict["event_rectify_map"])
+    map_height, map_width = rect_map.shape[:2]
+    x = events["x"].astype(np.int64, copy=False)
+    y = events["y"].astype(np.int64, copy=False)
+    valid = (x >= 0) & (x < map_width) & (y >= 0) & (y < map_height)
+    if not np.any(valid):
+        return {key: value[:0] for key, value in events.items()}
+
+    coords = rect_map[y[valid], x[valid]]
+    finite = np.isfinite(coords[:, 0]) & np.isfinite(coords[:, 1])
+    if not np.any(finite):
+        return {key: value[:0] for key, value in events.items()}
+
+    keep_indices = np.nonzero(valid)[0][finite]
+    rectified = {
+        "x": np.rint(coords[finite, 0]).astype(np.int64),
+        "y": np.rint(coords[finite, 1]).astype(np.int64),
+        "t": events["t"][keep_indices],
+        "p": events["p"][keep_indices],
+    }
+    return rectified
+
+
+def _scale_events_to_image_shape(events, dataset_dict, height, width):
+    if events is None or events["x"].size == 0:
+        return events
+
+    sensor_width = int(dataset_dict.get("event_sensor_width", width))
+    sensor_height = int(dataset_dict.get("event_sensor_height", height))
+    if sensor_width == width and sensor_height == height:
+        return events
+
+    scaled = dict(events)
+    if sensor_width > 0 and sensor_width != width:
+        scaled["x"] = np.floor(scaled["x"].astype(np.float64) * float(width) / float(sensor_width)).astype(np.int64)
+    if sensor_height > 0 and sensor_height != height:
+        scaled["y"] = np.floor(scaled["y"].astype(np.float64) * float(height) / float(sensor_height)).astype(np.int64)
+    return scaled
 
 
 def _accumulate_window(events, num_bins, height, width):
@@ -232,16 +339,34 @@ def _normalize_nonzero(array):
     return array
 
 
-def _shift_time_window(time_window, time_offset_ms=0.0):
-    offset_us = int(round(float(time_offset_ms) * 1000.0))
-    return [int(value) + offset_us for value in time_window]
+def _shift_time_window(time_window, time_offset_ms=0.0, units_per_ms=1000):
+    offset = int(round(float(time_offset_ms) * float(units_per_ms)))
+    return [int(value) + offset for value in time_window]
+
+
+def _slice_events_for_record(dataset_dict, time_window):
+    if "event_h5" in dataset_dict:
+        return _event_slice(_h5(dataset_dict["event_h5"]), time_window)
+    if "event_dat_t" in dataset_dict and "event_dat_xyp" in dataset_dict:
+        return _event_slice_dat(dataset_dict, time_window)
+    return None
 
 
 def load_event_representation(dataset_dict, image_shape, num_bins=5, time_offset_ms=0.0):
     height, width = image_shape[:2]
-    h5_file = _h5(dataset_dict["event_h5"])
-    old_events = _event_slice(h5_file, _shift_time_window(dataset_dict["event_old"], time_offset_ms))
-    new_events = _event_slice(h5_file, _shift_time_window(dataset_dict["event_new"], time_offset_ms))
+    units_per_ms = int(dataset_dict.get("event_time_units_per_ms", 1000))
+    old_events = _slice_events_for_record(
+        dataset_dict,
+        _shift_time_window(dataset_dict["event_old"], time_offset_ms, units_per_ms),
+    )
+    new_events = _slice_events_for_record(
+        dataset_dict,
+        _shift_time_window(dataset_dict["event_new"], time_offset_ms, units_per_ms),
+    )
+    old_events = _rectify_events(old_events, dataset_dict)
+    new_events = _rectify_events(new_events, dataset_dict)
+    old_events = _scale_events_to_image_shape(old_events, dataset_dict, height, width)
+    new_events = _scale_events_to_image_shape(new_events, dataset_dict, height, width)
 
     old_voxel, old_density, old_pos, old_neg = _accumulate_window(old_events, num_bins, height, width)
     new_voxel, new_density, new_pos, new_neg = _accumulate_window(new_events, num_bins, height, width)
@@ -268,33 +393,116 @@ def load_event_representation(dataset_dict, image_shape, num_bins=5, time_offset
     return event.astype(np.float32), aux
 
 
-def load_event_edge_representation(dataset_dict, image_shape, window_radii_ms, time_offset_ms=0.0):
+def _dilate_binary_mask(mask, radius):
+    radius = int(radius)
+    if radius <= 0 or not mask.any():
+        return mask
+    padded = np.pad(mask.astype(bool), radius, mode="constant", constant_values=False)
+    dilated = np.zeros_like(mask, dtype=bool)
+    for dy in range(2 * radius + 1):
+        for dx in range(2 * radius + 1):
+            dilated |= padded[dy : dy + mask.shape[0], dx : dx + mask.shape[1]]
+    return dilated
+
+
+def _event_support_from_density_temporal(
+    density_log,
+    temporal_balance,
+    support_percentile=50.0,
+    temporal_threshold=0.05,
+    support_dilation=1,
+):
+    nonzero_density = density_log[density_log > 0]
+    if nonzero_density.size > 0:
+        threshold = np.percentile(nonzero_density, float(support_percentile))
+        support = (density_log > threshold) & (temporal_balance > float(temporal_threshold))
+    else:
+        support = np.zeros_like(density_log, dtype=bool)
+    support = _dilate_binary_mask(support, int(support_dilation))
+    return support.astype(np.float32)
+
+
+def load_event_edge_representation(
+    dataset_dict,
+    image_shape,
+    window_radii_ms,
+    time_offset_ms=0.0,
+    representation="legacy",
+    support_percentile=50.0,
+    temporal_threshold=0.05,
+    support_dilation=1,
+):
     height, width = image_shape[:2]
     radii = [int(value) for value in window_radii_ms]
     if not radii:
         return np.zeros((0, height, width), dtype=np.float32)
+    representation = str(representation).lower()
+    if representation in {"default", "triplet", "3ch"}:
+        representation = "legacy"
+    if representation in {"rms_v2", "true_reliability", "multiwindow_reliability"}:
+        representation = "reliability_v2"
+    if representation not in {"legacy", "reliability_v2"}:
+        raise ValueError(f"Unsupported event edge representation: {representation!r}")
 
-    h5_file = _h5(dataset_dict["event_h5"])
-    center_us = int(dataset_dict["event_old"][1]) + int(round(float(time_offset_ms) * 1000.0))
+    units_per_ms = int(dataset_dict.get("event_time_units_per_ms", 1000))
+    center_time = int(dataset_dict["event_old"][1]) + int(round(float(time_offset_ms) * float(units_per_ms)))
     channels = []
     for radius_ms in radii:
-        half_window = int(round(float(radius_ms) * 1000.0))
-        events = _event_slice(h5_file, [center_us - half_window, center_us + half_window])
-        density, pos_count, neg_count = _accumulate_counts(events, height, width)
+        half_window = int(round(float(radius_ms) * float(units_per_ms)))
+        old_events = _slice_events_for_record(dataset_dict, [center_time - half_window, center_time])
+        new_events = _slice_events_for_record(dataset_dict, [center_time, center_time + half_window])
+        old_events = _rectify_events(old_events, dataset_dict)
+        new_events = _rectify_events(new_events, dataset_dict)
+        old_events = _scale_events_to_image_shape(old_events, dataset_dict, height, width)
+        new_events = _scale_events_to_image_shape(new_events, dataset_dict, height, width)
+        old_density, old_pos, old_neg = _accumulate_counts(old_events, height, width)
+        new_density, new_pos, new_neg = _accumulate_counts(new_events, height, width)
+        density = old_density + new_density
+        pos_count = old_pos + new_pos
+        neg_count = old_neg + new_neg
         density_log = np.log1p(density).astype(np.float32)
+
+        temporal_balance = np.zeros_like(density_log, dtype=np.float32)
+        temporal_active = density > 0
+        temporal_balance[temporal_active] = (
+            1.0
+            - np.abs(old_density[temporal_active] - new_density[temporal_active])
+            / (density[temporal_active] + 1e-6)
+        )
+
         polarity_total = pos_count + neg_count
         polarity_balance = np.zeros_like(density_log, dtype=np.float32)
         active = polarity_total > 0
         polarity_balance[active] = (
             1.0 - np.abs(pos_count[active] - neg_count[active]) / (polarity_total[active] + 1e-6)
         )
-        edge_score = density_log * (0.5 + 0.5 * polarity_balance)
-        channels.extend(
-            [
-                _normalize_nonzero(density_log),
-                _normalize_nonzero(edge_score),
-                polarity_balance * (density > 0).astype(np.float32),
-            ]
-        )
+        active_mask = (density > 0).astype(np.float32)
+        if representation == "reliability_v2":
+            support = _event_support_from_density_temporal(
+                density_log,
+                temporal_balance,
+                support_percentile=support_percentile,
+                temporal_threshold=temporal_threshold,
+                support_dilation=support_dilation,
+            )
+            edge_score = density_log
+            channels.extend(
+                [
+                    _normalize_nonzero(density_log),
+                    temporal_balance * active_mask,
+                    polarity_balance * active_mask,
+                    support,
+                    _normalize_nonzero(edge_score),
+                ]
+            )
+        else:
+            edge_score = density_log * (0.5 + 0.5 * polarity_balance)
+            channels.extend(
+                [
+                    _normalize_nonzero(density_log),
+                    _normalize_nonzero(edge_score),
+                    polarity_balance * active_mask,
+                ]
+            )
 
     return np.stack(channels, axis=0).astype(np.float32)
